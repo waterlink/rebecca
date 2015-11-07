@@ -88,7 +88,16 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 
 // First is for fetching first specific record
 func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string) ([]field.Field, error) {
-	return nil, nil
+	records, err := d.Where(tablename, fields, ctx, where)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get first record - %s", err)
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("Record not found with where query '%s'", where)
+	}
+
+	return records[0], nil
 }
 
 // Remove is for removing record by providen ID from database

@@ -91,6 +91,20 @@ func (c *Context) Where(query string, records interface{}) error {
 
 // First is for fetching only one specific record
 func (c *Context) First(query string, record interface{}) error {
+	meta, err := getMetadata(record)
+	if err != nil {
+		return err
+	}
+
+	fields, err := driver.First(meta.tablename, meta.fields, c, query)
+	if err != nil {
+		return fmt.Errorf("Unable to fetch specific records - %s", err)
+	}
+
+	if err := setFields(record, fields); err != nil {
+		return fmt.Errorf("Unable to assign fields for the record - %s", err)
+	}
+
 	return nil
 }
 
