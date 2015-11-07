@@ -17,9 +17,9 @@ type Driver interface {
 	Get(tablename string, fields []field.Field, ID field.Field) ([]field.Field, error)
 	Create(tablename string, fields []field.Field, ID *field.Field) error
 	Update(tablename string, fields []field.Field, ID field.Field) error
-	All(tablename string, fields []field.Field, ctx *context.Context) ([][]field.Field, error)
-	Where(tablename string, fields []field.Field, ctx *context.Context, where string) ([][]field.Field, error)
-	First(tablename string, fields []field.Field, ctx *context.Context, where string) ([]field.Field, error)
+	All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error)
+	Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error)
+	First(tablename string, fields []field.Field, ctx context.Context, where string) ([]field.Field, error)
 	Remove(tablename string, ID field.Field) error
 }
 
@@ -52,7 +52,26 @@ func (c *Context) GetSkip() int {
 }
 
 // All is for fetching all records
-func (c *Context) All(records []interface{}) error {
+func (c *Context) All(records interface{}) error {
+	meta, err := getMetadata(records)
+	if err != nil {
+		return err
+	}
+
+	fieldss, err := driver.All(meta.tablename, meta.fields, c)
+	if err != nil {
+		return fmt.Errorf("Unable to fetch all records - %s", err)
+	}
+
+	for _, fields := range fieldss {
+		record := zeroValueOf(records)
+		if err := setFields(&record, fields); err != nil {
+			return fmt.Errorf("Unable to assign fields for new record - %s", err)
+		}
+		v := reflect.ValueOf(records).Elem()
+		v.Set(reflect.Append(v, reflect.ValueOf(record).Elem()))
+	}
+
 	return nil
 }
 
@@ -137,7 +156,7 @@ func Save(record interface{}) error {
 }
 
 // All is for fetching all records
-func All(records []interface{}) error {
+func All(records interface{}) error {
 	ctx := &Context{}
 	return ctx.All(records)
 }
@@ -175,11 +194,22 @@ func getMetadata(record interface{}) (metadata, error) {
 	return meta, nil
 }
 
+func typeHasElem(ty reflect.Type) bool {
+	return ty.Kind() == reflect.Ptr ||
+		ty.Kind() == reflect.Interface ||
+		ty.Kind() == reflect.Slice
+}
+
+func valueHasElem(v reflect.Value) bool {
+	return v.Kind() == reflect.Ptr ||
+		v.Kind() == reflect.Interface
+}
+
 func fetchMetadata(record interface{}) (metadata, error) {
 	missingMetadata := metadata{}
 
 	ty := reflect.TypeOf(record)
-	for ty.Kind() == reflect.Ptr || ty.Kind() == reflect.Slice {
+	for typeHasElem(ty) {
 		ty = ty.Elem()
 	}
 
@@ -255,7 +285,7 @@ func setFields(record interface{}, fields []field.Field) error {
 
 func assignField(record interface{}, f field.Field) error {
 	v := reflect.ValueOf(record)
-	for v.Kind() == reflect.Ptr {
+	for valueHasElem(v) {
 		v = v.Elem()
 	}
 
@@ -279,7 +309,7 @@ func assignField(record interface{}, f field.Field) error {
 
 func fieldsFor(meta *metadata, record interface{}) ([]field.Field, error) {
 	v := reflect.ValueOf(record)
-	for v.Kind() == reflect.Ptr {
+	for valueHasElem(v) {
 		v = v.Elem()
 	}
 
@@ -301,7 +331,7 @@ func fieldsFor(meta *metadata, record interface{}) ([]field.Field, error) {
 
 func populateFieldValue(record interface{}, f *field.Field) error {
 	v := reflect.ValueOf(record)
-	for v.Kind() == reflect.Ptr {
+	for valueHasElem(v) {
 		v = v.Elem()
 	}
 
@@ -317,7 +347,7 @@ func populateFieldValue(record interface{}, f *field.Field) error {
 
 func isNewRecord(record interface{}, ID field.Field) (bool, error) {
 	v := reflect.ValueOf(record)
-	for v.Kind() == reflect.Ptr {
+	for valueHasElem(v) {
 		v = v.Elem()
 	}
 
@@ -329,4 +359,13 @@ func isNewRecord(record interface{}, ID field.Field) (bool, error) {
 
 	f := v.FieldByName(ID.Name)
 	return f.Interface() == reflect.Zero(f.Type()).Interface(), nil
+}
+
+func zeroValueOf(value interface{}) interface{} {
+	ty := reflect.TypeOf(value)
+	for typeHasElem(ty) {
+		ty = ty.Elem()
+	}
+
+	return reflect.New(ty).Interface()
 }

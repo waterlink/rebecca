@@ -56,17 +56,17 @@ func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) 
 }
 
 // All is for fetching all records
-func (d *Driver) All(tablename string, fields []field.Field, ctx *context.Context) ([][]field.Field, error) {
-	return nil, nil
+func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error) {
+	return d.getTable(tablename), nil
 }
 
 // Where is for fetching specific records
-func (d *Driver) Where(tablename string, fields []field.Field, ctx *context.Context, where string) ([][]field.Field, error) {
+func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error) {
 	return nil, nil
 }
 
 // First is for fetching first specific record
-func (d *Driver) First(tablename string, fields []field.Field, ctx *context.Context, where string) ([]field.Field, error) {
+func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string) ([]field.Field, error) {
 	return nil, nil
 }
 
