@@ -54,7 +54,7 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 	values := fieldValuesWithoutID(fields, *ID)
 
 	query := "INSERT INTO %s (%s) VALUES (%s) RETURNING %s"
-	query = fmt.Sprintf(query, tablename, namesRepr(names), valuesRepr(values), ID.DriverName)
+	query = fmt.Sprintf(query, tablename, namesRepr(names), valuesRepr(values, 0), ID.DriverName)
 
 	idValue := reflect.New(ID.Ty)
 	if err := d.db.QueryRow(query, values...).Scan(idValue.Interface()); err != nil {
@@ -66,6 +66,19 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 }
 
 func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) error {
+	names := fieldNamesWithoutID(fields, ID)
+	values := fieldValuesWithoutID(fields, ID)
+
+	query := "UPDATE %s SET (%s) = (%s) WHERE %s = $1"
+	query = fmt.Sprintf(query, tablename, namesRepr(names), valuesRepr(values, 1), ID.DriverName)
+
+	args := []interface{}{ID.Value}
+	args = append(args, values...)
+
+	if _, err := d.db.Exec(query, args...); err != nil {
+		return fmt.Errorf("Unable to update record with primary key = %+v in table %s - %s", ID.Value, tablename, err)
+	}
+
 	return nil
 }
 
@@ -137,11 +150,11 @@ func namesRepr(names []string) string {
 	return strings.Join(names, ", ")
 }
 
-func valuesRepr(values []interface{}) string {
+func valuesRepr(values []interface{}, offset int) string {
 	reprs := []string{}
 
 	for i := range values {
-		reprs = append(reprs, "$"+strconv.Itoa(i+1))
+		reprs = append(reprs, "$"+strconv.Itoa(i+offset+1))
 	}
 
 	return strings.Join(reprs, ", ")
