@@ -1,3 +1,5 @@
+// Package fakedriver is a limited in-memory implementation of rebecca.Driver
+// It does not implement any rebecca.Context features.
 package fakedriver
 
 import (

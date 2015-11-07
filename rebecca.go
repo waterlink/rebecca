@@ -1,3 +1,4 @@
+// Package rebecca is lightweight convenience library for work with database
 package rebecca
 
 import (
