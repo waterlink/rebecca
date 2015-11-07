@@ -24,7 +24,7 @@ import "github.com/waterlink/rebecca"
 type Person struct {
         rebecca.ModelMetadata `tablename:"people"`
 
-        ID   int    `rebecca:"id",rebecca_primary:"true"`
+        ID   int    `rebecca:"id" rebecca_primary:"true"`
         Name string `rebecca:"name"`
         Age  int    `rebecca:"age"`
 }
@@ -107,8 +107,7 @@ if err := rebecca.Save(p); err != nil {
 
 ```go
 people := []Person{}
-// or people := []*Person{}
-if err := rebecca.All(people); err != nil {
+if err := rebecca.All(&people); err != nil {
         // handle error here
 }
 
@@ -119,7 +118,7 @@ if err := rebecca.All(people); err != nil {
 
 ```go
 kids := []Person{}
-if err := rebecca.Where("age < 12", kids); err != nil {
+if err := rebecca.Where("age < 12", &kids); err != nil {
         // handle error here
 }
 
@@ -135,6 +134,15 @@ if err := rebecca.First("age < 12", kid); err != nil {
 }
 
 // kid will contain found first record
+```
+
+### Removing record
+
+```go
+// Given p is *Person:
+if err := rebecca.Remove(p); err != nil {
+        // handle error here
+}
 ```
 
 ### Fetching count for something
@@ -167,7 +175,7 @@ For example, to fetch second 300 records ordered by age.
 ```go
 kidsBatch := []Person{}
 ctx := &rebecca.Context{Order: "age ASC", Limit: 300, Skip: 300}
-if err := ctx.Where("age < 12", kidsBatch); err != nil {
+if err := ctx.Where("age < 12", &kidsBatch); err != nil {
         // handle error here
 }
 
@@ -192,7 +200,7 @@ Next, lets query this using the `Context`:
 ```go
 peopleByAge := []PeopleByAge{}
 ctx := &rebecca.Context{Group: "age"}
-if err := ctx.All(peopleByAge); err != nil {
+if err := ctx.All(&peopleByAge); err != nil {
         // handle error here
 }
 
