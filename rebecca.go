@@ -178,28 +178,26 @@ func getMetadata(record interface{}) (metadata, error) {
 func fetchMetadata(record interface{}) (metadata, error) {
 	missingMetadata := metadata{}
 
-	v := reflect.ValueOf(record)
-	for v.Kind() == reflect.Ptr {
-		v = v.Elem()
+	ty := reflect.TypeOf(record)
+	for ty.Kind() == reflect.Ptr || ty.Kind() == reflect.Slice {
+		ty = ty.Elem()
 	}
 
-	if v.Kind() != reflect.Struct {
+	if ty.Kind() != reflect.Struct {
 		return missingMetadata, fmt.Errorf("Rebecca's model is required to be struct, but got: %+v", record)
 	}
 
-	metaValue := v.FieldByName("ModelMetadata")
-	metaType := metaValue.Type()
+	metaField, ok := ty.FieldByName("ModelMetadata")
+	if !ok {
+		return missingMetadata, fmt.Errorf("Rebecca's model is required to embed rebecca.ModelMetadata")
+	}
+
+	metaType := metaField.Type
 	if metaType.PkgPath() != "github.com/waterlink/rebecca" || metaType.Name() != "ModelMetadata" {
 		return missingMetadata, fmt.Errorf("Rebecca's model is required to embed rebecca.ModelMetadata")
 	}
 
 	meta := metadata{}
-
-	ty := v.Type()
-	metaField, ok := ty.FieldByName("ModelMetadata")
-	if !ok {
-		return missingMetadata, fmt.Errorf("Unable to find ModelMetadata field on %s.%s type", ty.PkgPath(), ty.Name())
-	}
 
 	metaTag := metaField.Tag
 	tablename := metaTag.Get("tablename")
