@@ -63,20 +63,29 @@ func (c *Context) All(records interface{}) error {
 		return fmt.Errorf("Unable to fetch all records - %s", err)
 	}
 
-	for _, fields := range fieldss {
-		record := zeroValueOf(records)
-		if err := setFields(&record, fields); err != nil {
-			return fmt.Errorf("Unable to assign fields for new record - %s", err)
-		}
-		v := reflect.ValueOf(records).Elem()
-		v.Set(reflect.Append(v, reflect.ValueOf(record).Elem()))
+	if err := populateRecordsFromFieldss(records, fieldss); err != nil {
+		return fmt.Errorf("Unable to fetch all records - %s", err)
 	}
 
 	return nil
 }
 
 // Where is for fetching specific records
-func (c *Context) Where(query string, records []interface{}) error {
+func (c *Context) Where(query string, records interface{}) error {
+	meta, err := getMetadata(records)
+	if err != nil {
+		return err
+	}
+
+	fieldss, err := driver.Where(meta.tablename, meta.fields, c, query)
+	if err != nil {
+		return fmt.Errorf("Unable to fetch specific records - %s", err)
+	}
+
+	if err := populateRecordsFromFieldss(records, fieldss); err != nil {
+		return fmt.Errorf("Unable to fetch specific records - %s", err)
+	}
+
 	return nil
 }
 
@@ -162,7 +171,7 @@ func All(records interface{}) error {
 }
 
 // Where is for fetching specific records
-func Where(where string, records []interface{}) error {
+func Where(where string, records interface{}) error {
 	ctx := &Context{}
 	return ctx.Where(where, records)
 }
@@ -368,4 +377,17 @@ func zeroValueOf(value interface{}) interface{} {
 	}
 
 	return reflect.New(ty).Interface()
+}
+
+func populateRecordsFromFieldss(records interface{}, fieldss [][]field.Field) error {
+	for _, fields := range fieldss {
+		record := zeroValueOf(records)
+		if err := setFields(&record, fields); err != nil {
+			return fmt.Errorf("Unable to assign fields for new record - %s", err)
+		}
+		v := reflect.ValueOf(records).Elem()
+		v.Set(reflect.Append(v, reflect.ValueOf(record).Elem()))
+	}
+
+	return nil
 }

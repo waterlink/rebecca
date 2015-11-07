@@ -62,7 +62,28 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 
 // Where is for fetching specific records
 func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error) {
-	return nil, nil
+	result := [][]field.Field{}
+
+	fn, ok := d.whereRegistry[where]
+	if !ok {
+		return nil, fmt.Errorf(
+			"Fake driver has no '%s' where query registerd, please register with RegisterWhere",
+			where,
+		)
+	}
+
+	for _, record := range d.getTable(tablename) {
+		ok, err := fn(record)
+		if err != nil {
+			return nil, fmt.Errorf("Registered query '%s' returned error - %s", where, err)
+		}
+
+		if ok {
+			result = append(result, record)
+		}
+	}
+
+	return result, nil
 }
 
 // First is for fetching first specific record
