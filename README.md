@@ -24,7 +24,7 @@ import "github.com/waterlink/rebecca"
 type Person struct {
         rebecca.ModelMetadata `tablename:"people"`
 
-        ID   int    `rebecca:"id",rebecca_primary:"true"`
+        ID   int    `rebecca:"id" rebecca_primary:"true"`
         Name string `rebecca:"name"`
         Age  int    `rebecca:"age"`
 }
@@ -135,6 +135,15 @@ if err := rebecca.First("age < 12", kid); err != nil {
 }
 
 // kid will contain found first record
+```
+
+### Removing record
+
+```go
+// Given p is *Person:
+if err := rebecca.Remove(p); err != nil {
+        // handle error here
+}
 ```
 
 ### Fetching count for something
