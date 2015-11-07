@@ -16,7 +16,7 @@ var (
 type Driver interface {
 	Get(tablename string, fields []field.Field, ID field.Field) ([]field.Field, error)
 	Create(tablename string, fields []field.Field, ID *field.Field) error
-	Update(tablename string, fields []field.Field) error
+	Update(tablename string, fields []field.Field, ID field.Field) error
 	All(tablename string, fields []field.Field, ctx *context.Context) ([][]field.Field, error)
 	Where(tablename string, fields []field.Field, ctx *context.Context, where string) ([][]field.Field, error)
 	First(tablename string, fields []field.Field, ctx *context.Context, where string) ([]field.Field, error)
@@ -110,12 +110,27 @@ func Save(record interface{}) error {
 	}
 
 	idField := meta.primary
-	if err := driver.Create(meta.tablename, fields, &idField); err != nil {
-		return fmt.Errorf("Unable to create record %+v - %s", record, err)
+	isNew, err := isNewRecord(record, idField)
+	if err != nil {
+		return fmt.Errorf("Unable to determine if record %+v is new - %s", record, err)
 	}
 
-	if err := assignField(record, idField); err != nil {
-		return fmt.Errorf("Unable to assign primary field for record %+v - %s", record, err)
+	if isNew {
+		if err := driver.Create(meta.tablename, fields, &idField); err != nil {
+			return fmt.Errorf("Unable to create record %+v - %s", record, err)
+		}
+
+		if err := assignField(record, idField); err != nil {
+			return fmt.Errorf("Unable to assign primary field for record %+v - %s", record, err)
+		}
+	} else {
+		if err := populateFieldValue(record, &idField); err != nil {
+			return fmt.Errorf("Unable to fetch primary field from record %+v - %s", record, err)
+		}
+
+		if err := driver.Update(meta.tablename, fields, idField); err != nil {
+			return fmt.Errorf("Unable to update record %+v - %s", record, err)
+		}
 	}
 
 	return nil
@@ -284,4 +299,36 @@ func fieldsFor(meta *metadata, record interface{}) ([]field.Field, error) {
 	}
 
 	return fields, nil
+}
+
+func populateFieldValue(record interface{}, f *field.Field) error {
+	v := reflect.ValueOf(record)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	ty := v.Type()
+
+	if _, ok := ty.FieldByName(f.Name); !ok {
+		return fmt.Errorf("Field %s not found on record %+v", f.Name, record)
+	}
+
+	f.Value = v.FieldByName(f.Name).Interface()
+	return nil
+}
+
+func isNewRecord(record interface{}, ID field.Field) (bool, error) {
+	v := reflect.ValueOf(record)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	ty := v.Type()
+
+	if _, ok := ty.FieldByName(ID.Name); !ok {
+		return false, fmt.Errorf("Field %s not found on record %+v", ID.Name, record)
+	}
+
+	f := v.FieldByName(ID.Name)
+	return f.Interface() == reflect.Zero(f.Type()).Interface(), nil
 }

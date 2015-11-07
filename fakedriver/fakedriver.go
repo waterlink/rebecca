@@ -43,8 +43,16 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 }
 
 // Update is for updating existing record
-func (d *Driver) Update(tablename string, fields []field.Field) error {
-	return nil
+func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) error {
+	records := d.getTable(tablename)
+	for i, record := range records {
+		if hasField(record, ID) {
+			records[i] = fields
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Unable to find record with ID=%+v", ID.Value)
 }
 
 // All is for fetching all records
