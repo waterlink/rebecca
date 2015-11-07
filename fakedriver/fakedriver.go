@@ -100,8 +100,17 @@ func (d *Driver) First(tablename string, fields []field.Field, ctx context.Conte
 	return records[0], nil
 }
 
-// Remove is for removing record by providen ID from database
+// Remove is for removing record by provided ID from database
 func (d *Driver) Remove(tablename string, ID field.Field) error {
+	records := [][]field.Field{}
+
+	for _, record := range d.getTable(tablename) {
+		if !hasField(record, ID) {
+			records = append(records, record)
+		}
+	}
+
+	d.records[tablename] = records
 	return nil
 }
 

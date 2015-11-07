@@ -198,6 +198,20 @@ func First(where string, record interface{}) error {
 
 // Remove is for removing the record
 func Remove(record interface{}) error {
+	meta, err := getMetadata(record)
+	if err != nil {
+		return err
+	}
+
+	idField := meta.primary
+	if err := populateFieldValue(record, &idField); err != nil {
+		return fmt.Errorf("Unable to populate primary field of record %+v - %s", record, err)
+	}
+
+	if err := driver.Remove(meta.tablename, idField); err != nil {
+		return fmt.Errorf("Unable to remove record %+v - %s", record, err)
+	}
+
 	return nil
 }
 
