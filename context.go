@@ -8,40 +8,47 @@ import (
 
 // Context is for storing query context
 type Context struct {
+	// Defines ordering of the query
 	Order string
+
+	// Defines grouping criteria of the query
 	Group string
+
+	// Defines maximum amount of records requested for the query
 	Limit int
-	Skip  int
+
+	// Defines starting record for the query
+	Skip int
 
 	tx interface{}
 }
 
-// GetOrder is for fetching context's Order
+// GetOrder is for fetching context's Order. Used by drivers
 func (c *Context) GetOrder() string {
 	return c.Order
 }
 
-// GetGroup is for fetching context's Group
+// GetGroup is for fetching context's Group. Used by drivers
 func (c *Context) GetGroup() string {
 	return c.Group
 }
 
-// GetLimit is for fetching context's Limit
+// GetLimit is for fetching context's Limit. Used by drivers
 func (c *Context) GetLimit() int {
 	return c.Limit
 }
 
-// GetSkip is for fetching context's Skip
+// GetSkip is for fetching context's Skip. Used by drivers
 func (c *Context) GetSkip() int {
 	return c.Skip
 }
 
-// GetTx is for fetching context's driver transaction state
+// GetTx is for fetching context's driver transaction state. Used by drivers
 func (c *Context) GetTx() interface{} {
 	return c.tx
 }
 
-// SetOrder is for setting context's Order, it creates new Context
+// SetOrder is for setting context's Order, it creates new Context. Used by drivers
 func (c *Context) SetOrder(order string) context.Context {
 	return &Context{
 		Order: order,
@@ -52,7 +59,7 @@ func (c *Context) SetOrder(order string) context.Context {
 	}
 }
 
-// SetGroup is for setting context's Group
+// SetGroup is for setting context's Group. Used by drivers
 func (c *Context) SetGroup(group string) context.Context {
 	return &Context{
 		Order: c.Order,
@@ -63,7 +70,7 @@ func (c *Context) SetGroup(group string) context.Context {
 	}
 }
 
-// SetLimit is for setting context's Limit
+// SetLimit is for setting context's Limit. Used by drivers
 func (c *Context) SetLimit(limit int) context.Context {
 	return &Context{
 		Order: c.Order,
@@ -74,7 +81,7 @@ func (c *Context) SetLimit(limit int) context.Context {
 	}
 }
 
-// SetSkip is for setting context's Skip
+// SetSkip is for setting context's Skip. Used by drivers
 func (c *Context) SetSkip(skip int) context.Context {
 	return &Context{
 		Order: c.Order,
