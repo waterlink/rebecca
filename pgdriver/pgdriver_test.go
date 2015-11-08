@@ -181,6 +181,45 @@ func TestFirst(t *testing.T) {
 	}
 }
 
+func TestLimit(t *testing.T) {
+	setup(t)
+
+	p1 := &Person{Name: "John", Age: 9}
+	p2 := &Person{Name: "Sarah", Age: 27}
+	p3 := &Person{Name: "Bruce", Age: 33}
+	p4 := &Person{Name: "James", Age: 11}
+	p5 := &Person{Name: "Monika", Age: 12}
+	p6 := &Person{Name: "Peter", Age: 21}
+	people := []*Person{p1, p2, p3, p4, p5, p6}
+
+	for _, p := range people {
+		if err := rebecca.Save(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ctx := &rebecca.Context{Limit: 4}
+	expected := []Person{*p1, *p2, *p3, *p4}
+	actual := []Person{}
+	if err := ctx.All(&actual); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+
+	expected = []Person{*p2, *p3, *p4, *p5}
+	actual = []Person{}
+	if err := ctx.Where(&actual, "age > $1", 10); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+}
+
 func TestRemove(t *testing.T) {
 	setup(t)
 

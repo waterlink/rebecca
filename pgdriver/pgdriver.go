@@ -78,8 +78,8 @@ func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) 
 func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error) {
 	names := fieldNames(fields)
 
-	query := "SELECT %s FROM %s"
-	query = fmt.Sprintf(query, namesRepr(names), tablename)
+	query := "SELECT %s FROM %s %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, contextFor(ctx))
 
 	return d.readRows(fields, query)
 }
@@ -88,8 +88,8 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
 	names := fieldNames(fields)
 
-	query := "SELECT %s FROM %s WHERE %s"
-	query = fmt.Sprintf(query, namesRepr(names), tablename, where)
+	query := "SELECT %s FROM %s WHERE %s %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, where, contextFor(ctx))
 	return d.readRows(fields, query, args...)
 }
 
@@ -222,4 +222,14 @@ func recordFromValues(values []reflect.Value, fields []field.Field) []field.Fiel
 		record = append(record, newField)
 	}
 	return record
+}
+
+func contextFor(ctx context.Context) string {
+	queryCtx := ""
+
+	if ctx.GetLimit() > 0 {
+		queryCtx = queryCtx + fmt.Sprintf(" LIMIT %d", ctx.GetLimit())
+	}
+
+	return queryCtx
 }
