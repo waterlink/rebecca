@@ -1,4 +1,39 @@
 // Package rebecca is lightweight convenience library for work with database
+//
+// See github README for instructions: https://github.com/waterlink/rebecca#rebecca
+//
+// See examples: https://godoc.org/github.com/waterlink/rebecca#pkg-examples
+//
+// Simple example:
+//
+//    type Person struct {
+//            rebecca.ModelMetadata `tablename:"people"`
+//
+//            ID   int    `rebecca:"id" rebecca_primary:"true"`
+//            Name string `rebecca:"name"`
+//            Age  int    `rebecca:"age"`
+//    }
+//
+//    // Create new record
+//    p := &Person{Name: "John", Age: 34}
+//    if err := rebecca.Save(p); err != nil {
+//            // handle error here
+//    }
+//    fmt.Print(p)
+//
+//    // Update existing record
+//    p.Name = "John Smith"
+//    if err := rebecca.Save(p); err != nil {
+//            // handle error here
+//    }
+//    fmt.Print(p)
+//
+//    // Get record by its primary key
+//    p = &Person{}
+//    if err := rebecca.Get(25, p); err != nil {
+//            // handle error here
+//    }
+//    fmt.Print(p)
 package rebecca
 
 import (
