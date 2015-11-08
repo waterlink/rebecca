@@ -118,7 +118,7 @@ if err := rebecca.All(&people); err != nil {
 
 ```go
 kids := []Person{}
-if err := rebecca.Where("age < 12", &kids); err != nil {
+if err := rebecca.Where(&kids, "age < $1", 12); err != nil {
         // handle error here
 }
 
@@ -129,7 +129,7 @@ if err := rebecca.Where("age < 12", &kids); err != nil {
 
 ```go
 kid := &Person{}
-if err := rebecca.First("age < 12", kid); err != nil {
+if err := rebecca.First(kid, "age < $1", 12); err != nil {
         // handle error here
 }
 
@@ -161,7 +161,7 @@ And then, lets query for this count:
 
 ```go
 kidsCount := &PeopleCount{}
-if err := rebecca.First("age < 12", kidsCount); err != nil {
+if err := rebecca.First(kidsCount, "age < $1", 12); err != nil {
         // handle error here
 }
 
@@ -175,7 +175,7 @@ For example, to fetch second 300 records ordered by age.
 ```go
 kidsBatch := []Person{}
 ctx := &rebecca.Context{Order: "age ASC", Limit: 300, Skip: 300}
-if err := ctx.Where("age < 12", &kidsBatch); err != nil {
+if err := ctx.Where(&kidsBatch, "age < $1", 12); err != nil {
         // handle error here
 }
 

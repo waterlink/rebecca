@@ -11,7 +11,7 @@ import (
 
 // Driver represents fake driver for tests
 type Driver struct {
-	whereRegistry map[string]func([]field.Field) (bool, error)
+	whereRegistry map[string]func([]field.Field, ...interface{}) (bool, error)
 	records       map[string][][]field.Field
 	maxID         int
 }
@@ -19,7 +19,7 @@ type Driver struct {
 // NewDriver is for creating new fake driver
 func NewDriver() *Driver {
 	return &Driver{
-		whereRegistry: map[string]func([]field.Field) (bool, error){},
+		whereRegistry: map[string]func([]field.Field, ...interface{}) (bool, error){},
 		records:       map[string][][]field.Field{},
 	}
 }
@@ -63,7 +63,7 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 }
 
 // Where is for fetching specific records
-func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error) {
+func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
 	result := [][]field.Field{}
 
 	fn, ok := d.whereRegistry[where]
@@ -75,7 +75,7 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 	}
 
 	for _, record := range d.getTable(tablename) {
-		ok, err := fn(record)
+		ok, err := fn(record, args...)
 		if err != nil {
 			return nil, fmt.Errorf("Registered query '%s' returned error - %s", where, err)
 		}
@@ -89,8 +89,8 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 }
 
 // First is for fetching first specific record
-func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string) ([]field.Field, error) {
-	records, err := d.Where(tablename, fields, ctx, where)
+func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
+	records, err := d.Where(tablename, fields, ctx, where, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get first record - %s", err)
 	}
@@ -117,7 +117,7 @@ func (d *Driver) Remove(tablename string, ID field.Field) error {
 }
 
 // RegisterWhere is for registering fake where query
-func (d *Driver) RegisterWhere(where string, fn func(record []field.Field) (bool, error)) {
+func (d *Driver) RegisterWhere(where string, fn func([]field.Field, ...interface{}) (bool, error)) {
 	d.whereRegistry[where] = fn
 }
 
