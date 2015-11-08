@@ -109,11 +109,11 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 	return result, resultErr
 }
 
-func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error) {
+func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
 	return nil, nil
 }
 
-func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string) ([]field.Field, error) {
+func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
 	return nil, nil
 }
 

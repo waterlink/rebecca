@@ -126,7 +126,7 @@ func TestWhere(t *testing.T) {
 
 	expected := []Person{*p1, *p3}
 	actual := []Person{}
-	if err := rebecca.Where("age < 12", &actual); err != nil {
+	if err := rebecca.Where(&actual, "age < $1", 12); err != nil {
 		t.Fatal(err)
 	}
 
