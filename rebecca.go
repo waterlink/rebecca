@@ -19,8 +19,8 @@ type Driver interface {
 	Create(tablename string, fields []field.Field, ID *field.Field) error
 	Update(tablename string, fields []field.Field, ID field.Field) error
 	All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error)
-	Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error)
-	First(tablename string, fields []field.Field, ctx context.Context, where string) ([]field.Field, error)
+	Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error)
+	First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error)
 	Remove(tablename string, ID field.Field) error
 }
 
@@ -72,13 +72,13 @@ func (c *Context) All(records interface{}) error {
 }
 
 // Where is for fetching specific records
-func (c *Context) Where(query string, records interface{}) error {
+func (c *Context) Where(records interface{}, query string, args ...interface{}) error {
 	meta, err := getMetadata(records)
 	if err != nil {
 		return err
 	}
 
-	fieldss, err := driver.Where(meta.tablename, meta.fields, c, query)
+	fieldss, err := driver.Where(meta.tablename, meta.fields, c, query, args...)
 	if err != nil {
 		return fmt.Errorf("Unable to fetch specific records - %s", err)
 	}
@@ -91,13 +91,13 @@ func (c *Context) Where(query string, records interface{}) error {
 }
 
 // First is for fetching only one specific record
-func (c *Context) First(query string, record interface{}) error {
+func (c *Context) First(record interface{}, query string, args ...interface{}) error {
 	meta, err := getMetadata(record)
 	if err != nil {
 		return err
 	}
 
-	fields, err := driver.First(meta.tablename, meta.fields, c, query)
+	fields, err := driver.First(meta.tablename, meta.fields, c, query, args...)
 	if err != nil {
 		return fmt.Errorf("Unable to fetch specific records - %s", err)
 	}
@@ -186,15 +186,15 @@ func All(records interface{}) error {
 }
 
 // Where is for fetching specific records
-func Where(where string, records interface{}) error {
+func Where(records interface{}, where string, args ...interface{}) error {
 	ctx := &Context{}
-	return ctx.Where(where, records)
+	return ctx.Where(records, where, args...)
 }
 
 // First is for fetching only one specific record
-func First(where string, record interface{}) error {
+func First(record interface{}, where string, args ...interface{}) error {
 	ctx := &Context{}
-	return ctx.First(where, record)
+	return ctx.First(record, where, args...)
 }
 
 // Remove is for removing the record

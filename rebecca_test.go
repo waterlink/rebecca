@@ -108,20 +108,20 @@ func TestWhere(t *testing.T) {
 	driver := fakedriver.NewDriver()
 	SetupDriver(driver)
 
-	driver.RegisterWhere("age < 12", func(record []field.Field) (bool, error) {
+	driver.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
-				return f.Value.(int) < 12, nil
+				return f.Value.(int) < args[0].(int), nil
 			}
 		}
 
 		return false, fmt.Errorf("record %+v does not have age field", record)
 	})
 
-	driver.RegisterWhere("age >= 12", func(record []field.Field) (bool, error) {
+	driver.RegisterWhere("age >= $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
-				return f.Value.(int) >= 12, nil
+				return f.Value.(int) >= args[0].(int), nil
 			}
 		}
 
@@ -150,7 +150,7 @@ func TestWhere(t *testing.T) {
 
 	expected := []Person{*p1, *p3}
 	actual := []Person{}
-	if err := Where("age < 12", &actual); err != nil {
+	if err := Where(&actual, "age < $1", 12); err != nil {
 		t.Fatal(err)
 	}
 
@@ -160,7 +160,7 @@ func TestWhere(t *testing.T) {
 
 	expected = []Person{*p2, *p4}
 	actual = []Person{}
-	if err := Where("age >= 12", &actual); err != nil {
+	if err := Where(&actual, "age >= $1", 12); err != nil {
 		t.Fatal(err)
 	}
 
@@ -173,20 +173,20 @@ func TestFirst(t *testing.T) {
 	driver := fakedriver.NewDriver()
 	SetupDriver(driver)
 
-	driver.RegisterWhere("age < 12", func(record []field.Field) (bool, error) {
+	driver.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
-				return f.Value.(int) < 12, nil
+				return f.Value.(int) < args[0].(int), nil
 			}
 		}
 
 		return false, fmt.Errorf("record %+v does not have age field", record)
 	})
 
-	driver.RegisterWhere("age >= 12", func(record []field.Field) (bool, error) {
+	driver.RegisterWhere("age >= $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
-				return f.Value.(int) >= 12, nil
+				return f.Value.(int) >= args[0].(int), nil
 			}
 		}
 
@@ -215,7 +215,7 @@ func TestFirst(t *testing.T) {
 
 	expected := p1
 	actual := &Person{}
-	if err := First("age < 12", &actual); err != nil {
+	if err := First(&actual, "age < $1", 12); err != nil {
 		t.Fatal(err)
 	}
 
@@ -225,7 +225,7 @@ func TestFirst(t *testing.T) {
 
 	expected = p2
 	actual = &Person{}
-	if err := First("age >= 12", &actual); err != nil {
+	if err := First(&actual, "age >= $1", 12); err != nil {
 		t.Fatal(err)
 	}
 
