@@ -39,14 +39,7 @@ func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]
 		return nil, fmt.Errorf("Unable to scan row from table %s - %s", tablename, err)
 	}
 
-	record := []field.Field{}
-	for i, f := range fields {
-		newField := f
-		newField.Value = values[i].Elem().Interface()
-		record = append(record, newField)
-	}
-
-	return record, nil
+	return recordFromValues(values, fields), nil
 }
 
 func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field) error {
@@ -83,7 +76,37 @@ func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) 
 }
 
 func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error) {
-	return nil, nil
+	names := fieldNames(fields)
+
+	query := "SELECT %s FROM %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename)
+
+	rows, err := d.db.Query(query)
+	defer func() {
+		if rows != nil {
+			rows.Close()
+		}
+	}()
+
+	if err != nil {
+		return nil, fmt.Errorf("Unable to execute query '%s' - %s", query, err)
+	}
+
+	result := [][]field.Field{}
+
+	var resultErr error
+
+	for rows.Next() {
+		values := newValues(fields)
+		if err := rows.Scan(scannableValues(values)...); err != nil {
+			resultErr = fmt.Errorf("Unable to scan row - query = %s - %s", query, err)
+			continue
+		}
+
+		result = append(result, recordFromValues(values, fields))
+	}
+
+	return result, resultErr
 }
 
 func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string) ([][]field.Field, error) {
@@ -158,4 +181,14 @@ func valuesRepr(values []interface{}, offset int) string {
 	}
 
 	return strings.Join(reprs, ", ")
+}
+
+func recordFromValues(values []reflect.Value, fields []field.Field) []field.Field {
+	record := []field.Field{}
+	for i, f := range fields {
+		newField := f
+		newField.Value = values[i].Elem().Interface()
+		record = append(record, newField)
+	}
+	return record
 }

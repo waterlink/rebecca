@@ -1,6 +1,7 @@
 package pgdriver
 
 import (
+	"math"
 	"reflect"
 	"testing"
 	"time"
@@ -23,10 +24,17 @@ type Person struct {
 type Post struct {
 	rebecca.ModelMetadata `tablename:"posts"`
 
-	ID        int       `rebecca;"id" rebecca_primary:"true"`
+	ID        int       `rebecca:"id" rebecca_primary:"true"`
 	Title     string    `rebecca:"title"`
 	Content   string    `rebecca:"content"`
 	CreatedAt time.Time `rebecca:"created_at"`
+}
+
+func (p *Post) Equal(other *Post) bool {
+	return p.ID == other.ID &&
+		p.Title == other.Title &&
+		p.Content == other.Content &&
+		math.Abs(float64(p.CreatedAt.Sub(other.CreatedAt))) < 500 // microseconds
 }
 
 func TestSaveCreates(t *testing.T) {
@@ -75,6 +83,32 @@ func TestSaveUpdates(t *testing.T) {
 	}
 }
 
+func TestAll(t *testing.T) {
+	setup(t)
+
+	p1 := &Post{Title: "Post 1", Content: "Content 1", CreatedAt: time.Now()}
+	p2 := &Post{Title: "Post 2", Content: "Content 2", CreatedAt: time.Now()}
+	p3 := &Post{Title: "Post 3", Content: "Content 3", CreatedAt: time.Now()}
+	p4 := &Post{Title: "Post 4", Content: "Content 4", CreatedAt: time.Now()}
+	posts := []*Post{p1, p2, p3, p4}
+
+	for _, p := range posts {
+		if err := rebecca.Save(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	expected := []Post{*p1, *p2, *p3, *p4}
+	actual := []Post{}
+	if err := rebecca.All(&actual); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+}
+
 func (d *Driver) exec(t *testing.T, query string) {
 	if _, err := d.db.Exec(query); err != nil {
 		t.Fatal(err)
@@ -86,4 +120,18 @@ func setup(t *testing.T) {
 	d.exec(t, "DELETE FROM people")
 	d.exec(t, "DELETE FROM posts")
 	rebecca.SetupDriver(d)
+}
+
+func equalPosts(l, r []Post) bool {
+	if len(l) != len(r) {
+		return false
+	}
+
+	for i := range l {
+		if !l[i].Equal(&r[i]) {
+			return false
+		}
+	}
+
+	return true
 }

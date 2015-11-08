@@ -10,4 +10,4 @@ psql $PARAMS -c "create database rebecca_pg_test"
 psql $PARAMS -c "create user rebecca_pg with superuser password 'rebecca_pg'"
 
 psql $PARAMS rebecca_pg_test -c "drop table if exists people; create table people( id serial primary key, name varchar(50), age int )"
-psql $PARAMS rebecca_pg_test -c "drop table if exists posts; create table posts( id serial primary key, title varchar(50), content text, created_at timestamp )"
+psql $PARAMS rebecca_pg_test -c "drop table if exists posts; create table posts( id serial primary key, title varchar(50), content text, created_at timestamp with time zone )"
