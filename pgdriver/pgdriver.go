@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // since this driver directly depends on it
 	"github.com/waterlink/rebecca/context"
 	"github.com/waterlink/rebecca/field"
 )
@@ -19,6 +19,7 @@ type Driver struct {
 	db *sql.DB
 }
 
+// NewDriver is for constructing correct driver instance
 func NewDriver(pgURL string) *Driver {
 	db, err := sql.Open("postgres", pgURL)
 	if err != nil {
@@ -28,6 +29,7 @@ func NewDriver(pgURL string) *Driver {
 	return &Driver{db}
 }
 
+// Get is for fetching one record given its ID
 func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]field.Field, error) {
 	names := fieldNames(fields)
 
@@ -37,6 +39,7 @@ func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]
 	return d.readRow(fields, query, ID.Value)
 }
 
+// Create is for creating new record and updating its ID
 func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field) error {
 	names := fieldNamesWithoutID(fields, *ID)
 	values := fieldValuesWithoutID(fields, *ID)
@@ -53,6 +56,7 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 	return nil
 }
 
+// Update is for updating existing record given its ID and fields to update
 func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) error {
 	names := fieldNamesWithoutID(fields, ID)
 	values := fieldValuesWithoutID(fields, ID)
@@ -70,6 +74,7 @@ func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) 
 	return nil
 }
 
+// All is for fetching all records in current context
 func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error) {
 	names := fieldNames(fields)
 
@@ -79,6 +84,7 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 	return d.readRows(fields, query)
 }
 
+// Where is for fetching specific records from current context given where query and arguments
 func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
 	names := fieldNames(fields)
 
@@ -87,6 +93,7 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 	return d.readRows(fields, query, args...)
 }
 
+// First is for fetching only first specific record from current context matching given where query and arguments
 func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
 	names := fieldNames(fields)
 
@@ -95,6 +102,7 @@ func (d *Driver) First(tablename string, fields []field.Field, ctx context.Conte
 	return d.readRow(fields, query, args...)
 }
 
+// Remove is for removing existing record given its ID
 func (d *Driver) Remove(tablename string, ID field.Field) error {
 	query := "DELETE FROM %s WHERE %s = $1"
 	query = fmt.Sprintf(query, tablename, ID.DriverName)
