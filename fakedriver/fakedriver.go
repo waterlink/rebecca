@@ -3,6 +3,7 @@
 package fakedriver
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/waterlink/rebecca/context"
@@ -25,7 +26,7 @@ func NewDriver() *Driver {
 }
 
 // Get is for fetching single record by its ID
-func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]field.Field, error) {
+func (d *Driver) Get(tx interface{}, tablename string, fields []field.Field, ID field.Field) ([]field.Field, error) {
 	for _, record := range d.getTable(tablename) {
 		if hasField(record, ID) {
 			return record, nil
@@ -36,7 +37,7 @@ func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]
 }
 
 // Create is for creating new record. Mutates passed ID
-func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field) error {
+func (d *Driver) Create(tx interface{}, tablename string, fields []field.Field, ID *field.Field) error {
 	d.maxID++
 	ID.Value = d.maxID
 	changeID(fields, *ID)
@@ -45,7 +46,7 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 }
 
 // Update is for updating existing record
-func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) error {
+func (d *Driver) Update(tx interface{}, tablename string, fields []field.Field, ID field.Field) error {
 	records := d.getTable(tablename)
 	for i, record := range records {
 		if hasField(record, ID) {
@@ -103,7 +104,7 @@ func (d *Driver) First(tablename string, fields []field.Field, ctx context.Conte
 }
 
 // Remove is for removing record by provided ID from database
-func (d *Driver) Remove(tablename string, ID field.Field) error {
+func (d *Driver) Remove(tx interface{}, tablename string, ID field.Field) error {
 	records := [][]field.Field{}
 
 	for _, record := range d.getTable(tablename) {
@@ -115,6 +116,22 @@ func (d *Driver) Remove(tablename string, ID field.Field) error {
 	d.records[tablename] = records
 	return nil
 }
+
+// HasTransactions indicates transaction support of the driver
+func (d *Driver) HasTransactions() bool {
+	return false
+}
+
+// Begin is for starting new transaction and returning relevant state
+func (d *Driver) Begin() (interface{}, error) {
+	return nil, errors.New("fakedriver does not support transactions")
+}
+
+// Rollback is for rolling back the transaction
+func (d *Driver) Rollback(interface{}) {}
+
+// Commit is for committing the transaction
+func (d *Driver) Commit(interface{}) error { return nil }
 
 // RegisterWhere is for registering fake where query
 func (d *Driver) RegisterWhere(where string, fn func([]field.Field, ...interface{}) (bool, error)) {

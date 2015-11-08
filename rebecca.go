@@ -2,6 +2,7 @@
 package rebecca
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -15,13 +16,17 @@ var (
 
 // Driver is for abstracting interaction with specific database
 type Driver interface {
-	Get(tablename string, fields []field.Field, ID field.Field) ([]field.Field, error)
-	Create(tablename string, fields []field.Field, ID *field.Field) error
-	Update(tablename string, fields []field.Field, ID field.Field) error
+	Get(tx interface{}, tablename string, fields []field.Field, ID field.Field) ([]field.Field, error)
+	Create(tx interface{}, tablename string, fields []field.Field, ID *field.Field) error
+	Update(tx interface{}, tablename string, fields []field.Field, ID field.Field) error
 	All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error)
 	Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error)
 	First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error)
-	Remove(tablename string, ID field.Field) error
+	Remove(tx interface{}, tablename string, ID field.Field) error
+	HasTransactions() bool
+	Begin() (interface{}, error)
+	Rollback(tx interface{})
+	Commit(tx interface{}) error
 }
 
 // Context is for storing query context
@@ -30,6 +35,8 @@ type Context struct {
 	Group string
 	Limit int
 	Skip  int
+
+	tx interface{}
 }
 
 // GetOrder is for fetching context's Order
@@ -52,6 +59,11 @@ func (c *Context) GetSkip() int {
 	return c.Skip
 }
 
+// GetTx is for fetching context's driver transaction state
+func (c *Context) GetTx() interface{} {
+	return c.tx
+}
+
 // SetOrder is for setting context's Order, it creates new Context
 func (c *Context) SetOrder(order string) context.Context {
 	return &Context{
@@ -59,6 +71,7 @@ func (c *Context) SetOrder(order string) context.Context {
 		Group: c.Group,
 		Limit: c.Limit,
 		Skip:  c.Skip,
+		tx:    c.tx,
 	}
 }
 
@@ -69,6 +82,7 @@ func (c *Context) SetGroup(group string) context.Context {
 		Group: group,
 		Limit: c.Limit,
 		Skip:  c.Skip,
+		tx:    c.tx,
 	}
 }
 
@@ -79,6 +93,7 @@ func (c *Context) SetLimit(limit int) context.Context {
 		Group: c.Group,
 		Limit: limit,
 		Skip:  c.Skip,
+		tx:    c.tx,
 	}
 }
 
@@ -89,6 +104,7 @@ func (c *Context) SetSkip(skip int) context.Context {
 		Group: c.Group,
 		Limit: c.Limit,
 		Skip:  skip,
+		tx:    c.tx,
 	}
 }
 
@@ -149,6 +165,91 @@ func (c *Context) First(record interface{}, query string, args ...interface{}) e
 	return nil
 }
 
+// Transaction is for managing transactions for drivers that allow it
+type Transaction struct {
+	tx       interface{}
+	finished bool
+}
+
+// Begin is for creating proper transaction
+func Begin() (*Transaction, error) {
+	tx, err := driver.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to begin transaction - %s", err)
+	}
+	return &Transaction{
+		tx: tx,
+	}, nil
+}
+
+// Rollback is for rolling back the transaction
+func (tx *Transaction) Rollback() {
+	if tx.finished {
+		return
+	}
+
+	driver.Rollback(tx.tx)
+	tx.finished = true
+}
+
+// Commit is for committing the transaction
+func (tx *Transaction) Commit() error {
+	if tx.finished {
+		return errors.New("Unable to commit transaction - Current transaction is already finished")
+	}
+
+	if err := driver.Commit(tx.tx); err != nil {
+		return fmt.Errorf("Unable to commit transaction - %s", err)
+	}
+
+	tx.finished = true
+	return nil
+}
+
+// Get is for fetching one record
+func (tx *Transaction) Get(ID interface{}, record interface{}) error {
+	return get(tx.tx, ID, record)
+}
+
+// Save is for saving one record (either creating or updating)
+func (tx *Transaction) Save(record interface{}) error {
+	return save(tx.tx, record)
+}
+
+// All is for fetching all records
+func (tx *Transaction) All(records interface{}) error {
+	ctx := tx.Context(&Context{})
+	return ctx.All(records)
+}
+
+// Where is for fetching specific records
+func (tx *Transaction) Where(records interface{}, where string, args ...interface{}) error {
+	ctx := tx.Context(&Context{})
+	return ctx.Where(records, where, args...)
+}
+
+// First is for fetching only one specific record
+func (tx *Transaction) First(record interface{}, where string, args ...interface{}) error {
+	ctx := tx.Context(&Context{})
+	return ctx.First(record, where, args...)
+}
+
+// Remove is for removing the record
+func (tx *Transaction) Remove(record interface{}) error {
+	return remove(tx.tx, record)
+}
+
+// Context is for instantiating proper context for transaction
+func (tx *Transaction) Context(ctx *Context) *Context {
+	return &Context{
+		Order: ctx.Order,
+		Group: ctx.Group,
+		Limit: ctx.Limit,
+		Skip:  ctx.Skip,
+		tx:    tx.tx,
+	}
+}
+
 // ModelMetadata is for storing any metadata for the whole model
 type ModelMetadata struct{}
 
@@ -160,63 +261,12 @@ type metadata struct {
 
 // Get is for fetching one record
 func Get(ID interface{}, record interface{}) error {
-	meta, err := getMetadata(record)
-	if err != nil {
-		return err
-	}
-
-	idField := meta.primary
-	idField.Value = ID
-
-	fields, err := driver.Get(meta.tablename, meta.fields, idField)
-	if err != nil {
-		return fmt.Errorf("Unable to find record - %s", err)
-	}
-
-	if err := setFields(record, fields); err != nil {
-		return fmt.Errorf("Unable to construct found record - %s", err)
-	}
-
-	return nil
+	return get(nil, ID, record)
 }
 
 // Save is for saving one record (either creating or updating)
 func Save(record interface{}) error {
-	meta, err := getMetadata(record)
-	if err != nil {
-		return err
-	}
-
-	fields, err := fieldsFor(&meta, record)
-	if err != nil {
-		return fmt.Errorf("Unable to fetch fields for record %+v", record)
-	}
-
-	idField := meta.primary
-	isNew, err := isNewRecord(record, idField)
-	if err != nil {
-		return fmt.Errorf("Unable to determine if record %+v is new - %s", record, err)
-	}
-
-	if isNew {
-		if err := driver.Create(meta.tablename, fields, &idField); err != nil {
-			return fmt.Errorf("Unable to create record %+v - %s", record, err)
-		}
-
-		if err := assignField(record, idField); err != nil {
-			return fmt.Errorf("Unable to assign primary field for record %+v - %s", record, err)
-		}
-	} else {
-		if err := populateFieldValue(record, &idField); err != nil {
-			return fmt.Errorf("Unable to fetch primary field from record %+v - %s", record, err)
-		}
-
-		if err := driver.Update(meta.tablename, fields, idField); err != nil {
-			return fmt.Errorf("Unable to update record %+v - %s", record, err)
-		}
-	}
-
-	return nil
+	return save(nil, record)
 }
 
 // All is for fetching all records
@@ -239,21 +289,7 @@ func First(record interface{}, where string, args ...interface{}) error {
 
 // Remove is for removing the record
 func Remove(record interface{}) error {
-	meta, err := getMetadata(record)
-	if err != nil {
-		return err
-	}
-
-	idField := meta.primary
-	if err := populateFieldValue(record, &idField); err != nil {
-		return fmt.Errorf("Unable to populate primary field of record %+v - %s", record, err)
-	}
-
-	if err := driver.Remove(meta.tablename, idField); err != nil {
-		return fmt.Errorf("Unable to remove record %+v - %s", record, err)
-	}
-
-	return nil
+	return remove(nil, record)
 }
 
 // SetupDriver is for setting up driver manually
@@ -456,6 +492,83 @@ func populateRecordsFromFieldss(records interface{}, fieldss [][]field.Field) er
 		}
 		v := reflect.ValueOf(records).Elem()
 		v.Set(reflect.Append(v, reflect.ValueOf(record).Elem()))
+	}
+
+	return nil
+}
+
+func get(tx interface{}, ID interface{}, record interface{}) error {
+	meta, err := getMetadata(record)
+	if err != nil {
+		return err
+	}
+
+	idField := meta.primary
+	idField.Value = ID
+
+	fields, err := driver.Get(tx, meta.tablename, meta.fields, idField)
+	if err != nil {
+		return fmt.Errorf("Unable to find record - %s", err)
+	}
+
+	if err := setFields(record, fields); err != nil {
+		return fmt.Errorf("Unable to construct found record - %s", err)
+	}
+
+	return nil
+}
+
+func save(tx interface{}, record interface{}) error {
+	meta, err := getMetadata(record)
+	if err != nil {
+		return err
+	}
+
+	fields, err := fieldsFor(&meta, record)
+	if err != nil {
+		return fmt.Errorf("Unable to fetch fields for record %+v", record)
+	}
+
+	idField := meta.primary
+	isNew, err := isNewRecord(record, idField)
+	if err != nil {
+		return fmt.Errorf("Unable to determine if record %+v is new - %s", record, err)
+	}
+
+	if isNew {
+		if err := driver.Create(tx, meta.tablename, fields, &idField); err != nil {
+			return fmt.Errorf("Unable to create record %+v - %s", record, err)
+		}
+
+		if err := assignField(record, idField); err != nil {
+			return fmt.Errorf("Unable to assign primary field for record %+v - %s", record, err)
+		}
+	} else {
+		if err := populateFieldValue(record, &idField); err != nil {
+			return fmt.Errorf("Unable to fetch primary field from record %+v - %s", record, err)
+		}
+
+		if err := driver.Update(tx, meta.tablename, fields, idField); err != nil {
+			return fmt.Errorf("Unable to update record %+v - %s", record, err)
+		}
+	}
+
+	return nil
+}
+
+func remove(tx interface{}, record interface{}) error {
+	meta, err := getMetadata(record)
+	if err != nil {
+		return err
+	}
+
+	idField := meta.primary
+	if err := populateFieldValue(record, &idField); err != nil {
+		return fmt.Errorf("Unable to populate primary field of record %+v - %s", record, err)
+	}
+
+	if err := driver.Remove(tx, meta.tablename, idField); err != nil {
+		return fmt.Errorf("Unable to remove record %+v - %s", record, err)
 	}
 
 	return nil
