@@ -145,6 +145,42 @@ func TestWhere(t *testing.T) {
 	}
 }
 
+func TestFirst(t *testing.T) {
+	setup(t)
+
+	p1 := &Person{Name: "John", Age: 9}
+	p2 := &Person{Name: "Sarah", Age: 27}
+	p3 := &Person{Name: "James", Age: 11}
+	p4 := &Person{Name: "Monika", Age: 12}
+	people := []*Person{p1, p2, p3, p4}
+
+	for _, p := range people {
+		if err := rebecca.Save(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	expected := p2
+	actual := &Person{}
+	if err := rebecca.First(actual, "age > $1", 10); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+
+	expected = p1
+	actual = &Person{}
+	if err := rebecca.First(actual, "age < $1", 15); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+}
+
 func (d *Driver) exec(t *testing.T, query string) {
 	if _, err := d.db.Exec(query); err != nil {
 		t.Fatal(err)

@@ -34,12 +34,7 @@ func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]
 	query := "SELECT %s FROM %s WHERE %s = $1 LIMIT 1"
 	query = fmt.Sprintf(query, namesRepr(names), tablename, ID.DriverName)
 
-	values := newValues(fields)
-	if err := d.db.QueryRow(query, ID.Value).Scan(scannableValues(values)...); err != nil {
-		return nil, fmt.Errorf("Unable to scan row from table %s - %s", tablename, err)
-	}
-
-	return recordFromValues(values, fields), nil
+	return d.readRow(fields, query, ID.Value)
 }
 
 func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field) error {
@@ -93,11 +88,24 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 }
 
 func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
-	return nil, nil
+	names := fieldNames(fields)
+
+	query := "SELECT %s FROM %s WHERE %s LIMIT 1"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, where)
+	return d.readRow(fields, query, args...)
 }
 
 func (d *Driver) Remove(tablename string, ID field.Field) error {
 	return nil
+}
+
+func (d *Driver) readRow(fields []field.Field, query string, args ...interface{}) ([]field.Field, error) {
+	values := newValues(fields)
+	if err := d.db.QueryRow(query, args...).Scan(scannableValues(values)...); err != nil {
+		return nil, fmt.Errorf("Unable to scan row - query = %s - %s", query, err)
+	}
+
+	return recordFromValues(values, fields), nil
 }
 
 func (d *Driver) readRows(fields []field.Field, query string, args ...interface{}) ([][]field.Field, error) {
