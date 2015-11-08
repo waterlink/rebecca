@@ -7,4 +7,9 @@ type Context interface {
 	GetGroup() string
 	GetLimit() int
 	GetSkip() int
+
+	SetOrder(string) Context
+	SetGroup(string) Context
+	SetLimit(int) Context
+	SetSkip(int) Context
 }

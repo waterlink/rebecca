@@ -78,8 +78,8 @@ func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) 
 func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error) {
 	names := fieldNames(fields)
 
-	query := "SELECT %s FROM %s"
-	query = fmt.Sprintf(query, namesRepr(names), tablename)
+	query := "SELECT %s FROM %s %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, contextFor(ctx))
 
 	return d.readRows(fields, query)
 }
@@ -88,17 +88,18 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
 	names := fieldNames(fields)
 
-	query := "SELECT %s FROM %s WHERE %s"
-	query = fmt.Sprintf(query, namesRepr(names), tablename, where)
+	query := "SELECT %s FROM %s WHERE %s %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, where, contextFor(ctx))
 	return d.readRows(fields, query, args...)
 }
 
 // First is for fetching only first specific record from current context matching given where query and arguments
 func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
+	firstCtx := ctx.SetLimit(1)
 	names := fieldNames(fields)
 
-	query := "SELECT %s FROM %s WHERE %s LIMIT 1"
-	query = fmt.Sprintf(query, namesRepr(names), tablename, where)
+	query := "SELECT %s FROM %s WHERE %s %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, where, contextFor(firstCtx))
 	return d.readRow(fields, query, args...)
 }
 
@@ -222,4 +223,26 @@ func recordFromValues(values []reflect.Value, fields []field.Field) []field.Fiel
 		record = append(record, newField)
 	}
 	return record
+}
+
+func contextFor(ctx context.Context) string {
+	queryCtx := ""
+
+	if group := ctx.GetGroup(); group != "" {
+		queryCtx = queryCtx + fmt.Sprintf(" GROUP BY %s", group)
+	}
+
+	if order := ctx.GetOrder(); order != "" {
+		queryCtx = queryCtx + fmt.Sprintf(" ORDER BY %s", order)
+	}
+
+	if limit := ctx.GetLimit(); limit > 0 {
+		queryCtx = queryCtx + fmt.Sprintf(" LIMIT %d", limit)
+	}
+
+	if skip := ctx.GetSkip(); skip > 0 {
+		queryCtx = queryCtx + fmt.Sprintf(" OFFSET %d", skip)
+	}
+
+	return queryCtx
 }

@@ -52,6 +52,46 @@ func (c *Context) GetSkip() int {
 	return c.Skip
 }
 
+// SetOrder is for setting context's Order, it creates new Context
+func (c *Context) SetOrder(order string) context.Context {
+	return &Context{
+		Order: order,
+		Group: c.Group,
+		Limit: c.Limit,
+		Skip:  c.Skip,
+	}
+}
+
+// SetGroup is for setting context's Group
+func (c *Context) SetGroup(group string) context.Context {
+	return &Context{
+		Order: c.Order,
+		Group: group,
+		Limit: c.Limit,
+		Skip:  c.Skip,
+	}
+}
+
+// SetLimit is for setting context's Limit
+func (c *Context) SetLimit(limit int) context.Context {
+	return &Context{
+		Order: c.Order,
+		Group: c.Group,
+		Limit: limit,
+		Skip:  c.Skip,
+	}
+}
+
+// SetSkip is for setting context's Skip
+func (c *Context) SetSkip(skip int) context.Context {
+	return &Context{
+		Order: c.Order,
+		Group: c.Group,
+		Limit: c.Limit,
+		Skip:  skip,
+	}
+}
+
 // All is for fetching all records
 func (c *Context) All(records interface{}) error {
 	meta, err := getMetadata(records)
