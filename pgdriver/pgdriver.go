@@ -81,7 +81,27 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 	query := "SELECT %s FROM %s"
 	query = fmt.Sprintf(query, namesRepr(names), tablename)
 
-	rows, err := d.db.Query(query)
+	return d.readRows(fields, query)
+}
+
+func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
+	names := fieldNames(fields)
+
+	query := "SELECT %s FROM %s WHERE %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, where)
+	return d.readRows(fields, query, args...)
+}
+
+func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
+	return nil, nil
+}
+
+func (d *Driver) Remove(tablename string, ID field.Field) error {
+	return nil
+}
+
+func (d *Driver) readRows(fields []field.Field, query string, args ...interface{}) ([][]field.Field, error) {
+	rows, err := d.db.Query(query, args...)
 	defer func() {
 		if rows != nil {
 			rows.Close()
@@ -107,18 +127,6 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 	}
 
 	return result, resultErr
-}
-
-func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
-	return nil, nil
-}
-
-func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
-	return nil, nil
-}
-
-func (d *Driver) Remove(tablename string, ID field.Field) error {
-	return nil
 }
 
 func fieldNames(fields []field.Field) []string {

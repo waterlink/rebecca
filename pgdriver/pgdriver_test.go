@@ -133,6 +133,16 @@ func TestWhere(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Expected %+v to equal %+v", actual, expected)
 	}
+
+	expected = []Person{*p2, *p4}
+	actual = []Person{}
+	if err := rebecca.Where(&actual, "age > $1", 11); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
 }
 
 func (d *Driver) exec(t *testing.T, query string) {
