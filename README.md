@@ -4,7 +4,10 @@ Simple database convenience wrapper for Go language.
 
 Docs are available on http://godoc.org/github.com/waterlink/rebecca
 
-*NOTE* The work is still in progress and not usable.
+## TODO
+
+- [ ] Design transaction interface
+- [ ] Implement transactions for `pgdriver`
 
 ## Installation
 
