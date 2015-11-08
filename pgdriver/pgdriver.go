@@ -228,12 +228,16 @@ func recordFromValues(values []reflect.Value, fields []field.Field) []field.Fiel
 func contextFor(ctx context.Context) string {
 	queryCtx := ""
 
-	if ctx.GetLimit() > 0 {
-		queryCtx = queryCtx + fmt.Sprintf(" LIMIT %d", ctx.GetLimit())
+	if order := ctx.GetOrder(); order != "" {
+		queryCtx = queryCtx + fmt.Sprintf(" ORDER BY %s", order)
 	}
 
-	if ctx.GetSkip() > 0 {
-		queryCtx = queryCtx + fmt.Sprintf(" OFFSET %d", ctx.GetSkip())
+	if limit := ctx.GetLimit(); limit > 0 {
+		queryCtx = queryCtx + fmt.Sprintf(" LIMIT %d", limit)
+	}
+
+	if skip := ctx.GetSkip(); skip > 0 {
+		queryCtx = queryCtx + fmt.Sprintf(" OFFSET %d", skip)
 	}
 
 	return queryCtx
