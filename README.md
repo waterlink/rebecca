@@ -2,6 +2,8 @@
 
 Simple database convenience wrapper for Go language.
 
+## Documentation
+
 Docs are available on http://godoc.org/github.com/waterlink/rebecca
 
 ## Installation
