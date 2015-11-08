@@ -95,10 +95,11 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 
 // First is for fetching only first specific record from current context matching given where query and arguments
 func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
+	firstCtx := ctx.SetLimit(1)
 	names := fieldNames(fields)
 
-	query := "SELECT %s FROM %s WHERE %s LIMIT 1"
-	query = fmt.Sprintf(query, namesRepr(names), tablename, where)
+	query := "SELECT %s FROM %s WHERE %s %s"
+	query = fmt.Sprintf(query, namesRepr(names), tablename, where, contextFor(firstCtx))
 	return d.readRow(fields, query, args...)
 }
 
@@ -229,6 +230,10 @@ func contextFor(ctx context.Context) string {
 
 	if ctx.GetLimit() > 0 {
 		queryCtx = queryCtx + fmt.Sprintf(" LIMIT %d", ctx.GetLimit())
+	}
+
+	if ctx.GetSkip() > 0 {
+		queryCtx = queryCtx + fmt.Sprintf(" OFFSET %d", ctx.GetSkip())
 	}
 
 	return queryCtx
