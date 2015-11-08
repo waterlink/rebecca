@@ -96,6 +96,13 @@ func (d *Driver) First(tablename string, fields []field.Field, ctx context.Conte
 }
 
 func (d *Driver) Remove(tablename string, ID field.Field) error {
+	query := "DELETE FROM %s WHERE %s = $1"
+	query = fmt.Sprintf(query, tablename, ID.DriverName)
+
+	if _, err := d.db.Exec(query, ID.Value); err != nil {
+		return fmt.Errorf("Unable to remove record with primary key = %+v in table %s - %s", ID.Value, tablename, err)
+	}
+
 	return nil
 }
 
