@@ -7,7 +7,7 @@ Docs are available on http://godoc.org/github.com/waterlink/rebecca
 ## TODO
 
 - [x] Design transaction interface
-- [ ] Implement transactions for `pgdriver`
+- [x] Implement transactions for `pgdriver`
 - [ ] Put usage examples in method-docs
 
 ## Installation
