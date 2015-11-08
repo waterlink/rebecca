@@ -318,6 +318,48 @@ func TestOrder(t *testing.T) {
 	}
 }
 
+func TestGroup(t *testing.T) {
+	setup(t)
+
+	p1 := &Person{Name: "John", Age: 9}
+	p2 := &Person{Name: "Sarah", Age: 27}
+	p3 := &Person{Name: "Bruce", Age: 27}
+	p4 := &Person{Name: "James", Age: 11}
+	p5 := &Person{Name: "Monika", Age: 11}
+	p6 := &Person{Name: "Peter", Age: 21}
+	p7 := &Person{Name: "Brad", Age: 11}
+	people := []*Person{p1, p2, p3, p4, p5, p6, p7}
+
+	for _, p := range people {
+		if err := rebecca.Save(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	type PersonByAge struct {
+		rebecca.ModelMetadata `tablename:"people"`
+
+		Age   int `rebecca:"age" rebecca_primary:"true"`
+		Count int `rebecca:"count(distinct(id))"`
+	}
+
+	ctx := rebecca.Context{Group: "age"}
+	expected := []PersonByAge{
+		{Age: 9, Count: 1},
+		{Age: 11, Count: 3},
+		{Age: 21, Count: 1},
+		{Age: 27, Count: 2},
+	}
+	actual := []PersonByAge{}
+	if err := ctx.All(&actual); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+}
+
 func TestRemove(t *testing.T) {
 	setup(t)
 
