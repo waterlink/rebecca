@@ -30,17 +30,17 @@ func NewDriver(pgURL string) *Driver {
 }
 
 // Get is for fetching one record given its ID
-func (d *Driver) Get(tablename string, fields []field.Field, ID field.Field) ([]field.Field, error) {
+func (d *Driver) Get(tx interface{}, tablename string, fields []field.Field, ID field.Field) ([]field.Field, error) {
 	names := fieldNames(fields)
 
 	query := "SELECT %s FROM %s WHERE %s = $1 LIMIT 1"
 	query = fmt.Sprintf(query, namesRepr(names), tablename, ID.DriverName)
 
-	return d.readRow(fields, query, ID.Value)
+	return d.readRow(tx, fields, query, ID.Value)
 }
 
 // Create is for creating new record and updating its ID
-func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field) error {
+func (d *Driver) Create(tx interface{}, tablename string, fields []field.Field, ID *field.Field) error {
 	names := fieldNamesWithoutID(fields, *ID)
 	values := fieldValuesWithoutID(fields, *ID)
 
@@ -48,7 +48,7 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 	query = fmt.Sprintf(query, tablename, namesRepr(names), valuesRepr(values, 0), ID.DriverName)
 
 	idValue := reflect.New(ID.Ty)
-	if err := d.db.QueryRow(query, values...).Scan(idValue.Interface()); err != nil {
+	if err := d.queryRow(tx, query, values...).Scan(idValue.Interface()); err != nil {
 		return fmt.Errorf("Unable to insert into %s - %s", tablename, err)
 	}
 
@@ -57,7 +57,7 @@ func (d *Driver) Create(tablename string, fields []field.Field, ID *field.Field)
 }
 
 // Update is for updating existing record given its ID and fields to update
-func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) error {
+func (d *Driver) Update(tx interface{}, tablename string, fields []field.Field, ID field.Field) error {
 	names := fieldNamesWithoutID(fields, ID)
 	values := fieldValuesWithoutID(fields, ID)
 
@@ -67,7 +67,7 @@ func (d *Driver) Update(tablename string, fields []field.Field, ID field.Field) 
 	args := []interface{}{ID.Value}
 	args = append(args, values...)
 
-	if _, err := d.db.Exec(query, args...); err != nil {
+	if err := d.execQuery(tx, query, args...); err != nil {
 		return fmt.Errorf("Unable to update record with primary key = %+v in table %s - %s", ID.Value, tablename, err)
 	}
 
@@ -81,7 +81,7 @@ func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context
 	query := "SELECT %s FROM %s %s"
 	query = fmt.Sprintf(query, namesRepr(names), tablename, contextFor(ctx))
 
-	return d.readRows(fields, query)
+	return d.readRows(ctx.GetTx(), fields, query)
 }
 
 // Where is for fetching specific records from current context given where query and arguments
@@ -90,7 +90,8 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 
 	query := "SELECT %s FROM %s WHERE %s %s"
 	query = fmt.Sprintf(query, namesRepr(names), tablename, where, contextFor(ctx))
-	return d.readRows(fields, query, args...)
+
+	return d.readRows(ctx.GetTx(), fields, query, args...)
 }
 
 // First is for fetching only first specific record from current context matching given where query and arguments
@@ -100,32 +101,82 @@ func (d *Driver) First(tablename string, fields []field.Field, ctx context.Conte
 
 	query := "SELECT %s FROM %s WHERE %s %s"
 	query = fmt.Sprintf(query, namesRepr(names), tablename, where, contextFor(firstCtx))
-	return d.readRow(fields, query, args...)
+	return d.readRow(ctx.GetTx(), fields, query, args...)
 }
 
 // Remove is for removing existing record given its ID
-func (d *Driver) Remove(tablename string, ID field.Field) error {
+func (d *Driver) Remove(tx interface{}, tablename string, ID field.Field) error {
 	query := "DELETE FROM %s WHERE %s = $1"
 	query = fmt.Sprintf(query, tablename, ID.DriverName)
 
-	if _, err := d.db.Exec(query, ID.Value); err != nil {
+	if err := d.execQuery(tx, query, ID.Value); err != nil {
 		return fmt.Errorf("Unable to remove record with primary key = %+v in table %s - %s", ID.Value, tablename, err)
 	}
 
 	return nil
 }
 
-func (d *Driver) readRow(fields []field.Field, query string, args ...interface{}) ([]field.Field, error) {
+// HasTransactions indicates transaction support of the driver
+func (d *Driver) HasTransactions() bool {
+	return true
+}
+
+// Begin is for starting new transaction. It returns relevant to this driver
+// state for transaction
+func (d *Driver) Begin() (interface{}, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+// Rollback is for rolling back the transaction
+func (d *Driver) Rollback(itx interface{}) {
+	tx := txFrom(itx)
+	tx.Rollback()
+}
+
+// Commit is for committing the transaction
+func (d *Driver) Commit(itx interface{}) error {
+	tx := txFrom(itx)
+	return tx.Commit()
+}
+
+func (d *Driver) queryRow(tx interface{}, query string, args ...interface{}) *sql.Row {
+	if tx == nil {
+		return d.db.QueryRow(query, args...)
+	}
+	return tx.(*sql.Tx).QueryRow(query, args...)
+}
+
+func (d *Driver) execQuery(tx interface{}, query string, args ...interface{}) error {
+	if tx == nil {
+		_, err := d.db.Exec(query, args...)
+		return err
+	}
+	_, err := tx.(*sql.Tx).Exec(query, args...)
+	return err
+}
+
+func (d *Driver) readRow(tx interface{}, fields []field.Field, query string, args ...interface{}) ([]field.Field, error) {
 	values := newValues(fields)
-	if err := d.db.QueryRow(query, args...).Scan(scannableValues(values)...); err != nil {
+	if err := d.queryRow(tx, query, args...).Scan(scannableValues(values)...); err != nil {
 		return nil, fmt.Errorf("Unable to scan row - query = %s - %s", query, err)
 	}
 
 	return recordFromValues(values, fields), nil
 }
 
-func (d *Driver) readRows(fields []field.Field, query string, args ...interface{}) ([][]field.Field, error) {
-	rows, err := d.db.Query(query, args...)
+func (d *Driver) query(tx interface{}, query string, args ...interface{}) (*sql.Rows, error) {
+	if tx == nil {
+		return d.db.Query(query, args...)
+	}
+	return tx.(*sql.Tx).Query(query, args...)
+}
+
+func (d *Driver) readRows(tx interface{}, fields []field.Field, query string, args ...interface{}) ([][]field.Field, error) {
+	rows, err := d.query(tx, query, args...)
 	defer func() {
 		if rows != nil {
 			rows.Close()
@@ -245,4 +296,12 @@ func contextFor(ctx context.Context) string {
 	}
 
 	return queryCtx
+}
+
+func txFrom(itx interface{}) *sql.Tx {
+	tx, ok := itx.(*sql.Tx)
+	if !ok {
+		panic(fmt.Sprintf("Unable to type-assert %#v to *sql.Tx", itx))
+	}
+	return tx
 }

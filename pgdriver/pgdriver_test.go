@@ -390,6 +390,93 @@ func TestRemove(t *testing.T) {
 	}
 }
 
+func TestTransactions(t *testing.T) {
+	setup(t)
+
+	txa, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer txa.Rollback()
+
+	txb, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer txb.Rollback()
+
+	pa := &Post{Title: "Hello world", Content: "Content of Hello World, many hellos", CreatedAt: time.Now()}
+	if err := txa.Save(pa); err != nil {
+		t.Fatal(err)
+	}
+
+	actual := &Post{}
+	if err := txa.Get(pa.ID, actual); err != nil {
+		t.Fatal(err)
+	}
+
+	actual = &Post{}
+	if err := txb.Get(pa.ID, actual); err == nil {
+		t.Errorf(
+			"Expected transaction B not to find record saved in transaction A, but got: %+v",
+			actual,
+		)
+	}
+
+	pb := &Post{Title: "Super Post", Content: "Super Content", CreatedAt: time.Now()}
+	if err := txb.Save(pb); err != nil {
+		t.Fatal(err)
+	}
+
+	actual = &Post{}
+	if err := txa.Get(pb.ID, actual); err == nil {
+		t.Errorf(
+			"Expected transaction A not to find record saved in transaction B, but got: %+v",
+			actual,
+		)
+	}
+
+	expecteds := []Post{*pa}
+	actuals := []Post{}
+	if err := txa.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{*pb}
+	actuals = []Post{}
+	if err := txb.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	if err := txa.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	txb.Rollback()
+
+	txc, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual = &Post{}
+	if err := txc.Get(pa.ID, actual); err != nil {
+		t.Fatal(err)
+	}
+
+	if !actual.Equal(pa) {
+		t.Errorf("Expected %+v to equal %+v", actual, pa)
+	}
+}
+
 func (d *Driver) exec(t *testing.T, query string) {
 	if _, err := d.db.Exec(query); err != nil {
 		t.Fatal(err)
