@@ -6,7 +6,7 @@ Docs are available on http://godoc.org/github.com/waterlink/rebecca
 
 ## TODO
 
-- [ ] Design transaction interface
+- [x] Design transaction interface
 - [ ] Implement transactions for `pgdriver`
 - [ ] Put usage examples in method-docs
 
@@ -209,6 +209,60 @@ if err := ctx.All(&peopleByAge); err != nil {
 }
 
 // Now peopleByAge represents slice of age => count relationship.
+```
+
+### Using transactions
+
+First, obtain `rebecca.Transaction` object by doing:
+
+```go
+tx, err := rebecca.Begin()
+if err != nil {
+        // handle error here
+}
+defer tx.Rollback()
+```
+
+Next, use `tx` as if it was `rebecca` normally:
+
+```go
+p := &Person{Name: "John Smith", Age: 29}
+if err := tx.Save(p); err != nil {
+        // handle error here
+}
+
+// use tx.Save, tx.Get, tx.Where, tx.All, tx.First as you would normally do
+// with `rebecca`
+```
+
+And finally, commit the transaction:
+
+```go
+if err := tx.Commit(); err != nil {
+        // handle error, if it is impossible to commit the transaction
+}
+```
+
+Or rollback, if you need to:
+
+```go
+tx.Rollback()
+```
+
+Don't worry about doing `defer tx.Rollback()` in your functions.
+`tx.Rollback()`, when done after commit, is a noop.
+
+### Using Context with Transactions
+
+To use context with transaction, you just need to create context using your
+transaction instance:
+
+```go
+ctx := tx.Context(&rebecca.Context{Order: "age DESC"})
+people := []Person{}
+if err := ctx.Where(&people, "age < $1", 23); err != nil {
+        // handle error here
+}
 ```
 
 ## Development
