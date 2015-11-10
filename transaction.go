@@ -1,5 +1,12 @@
 package rebecca
 
+// This file contains thin exported functions and methods related to
+// Transaction only.
+//
+// For unexported functions see: helpers.go
+//
+// For Context see: context.go
+
 import (
 	"errors"
 	"fmt"

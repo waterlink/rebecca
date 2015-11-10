@@ -1,5 +1,9 @@
 package rebecca
 
+// This file contains thin exported methods related to Context only.
+//
+// For unexported functions see: helpers.go
+
 import (
 	"fmt"
 
