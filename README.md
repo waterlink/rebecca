@@ -192,6 +192,13 @@ if err := ctx.Where(&kidsBatch, "age < $1", 12); err != nil {
 // Now you can use kidsBatch as a second batch of 300 records ordered by age.
 ```
 
+This example uses following options:
+- `Order` - ordering of the query, maps to `ORDER BY` clause in various SQL
+  dialects.
+- `Limit` - maximum amount of records to be queried, maps to `LIMIT` clause.
+- `Skip` - defines amount of records to skip, maps to `OFFSET`
+  clause.
+
 Don't confuse `rebecca.Context` with this interface:
 [rebecca/context](https://godoc.org/github.com/waterlink/rebecca/context). This
 interface is internal and used only by drivers. `rebecca.Context` implements
@@ -221,6 +228,10 @@ if err := ctx.All(&peopleByAge); err != nil {
 
 // Now peopleByAge represents slice of age => count relationship.
 ```
+
+This example uses folowing option of `rebecca.Context`:
+- `Group` - defines grouping criteria of the query, maps to `GROUP BY` clause
+  in various SQL dialects.
 
 ### Using transactions
 
