@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+report-on-errors() {
+  if [[ "$2" != "" ]]; then
+    echo "$1 reported:"
+    echo "$2"
+    exit 1
+  fi
+}
+
+# dirs - list of own packages of the repo, without dependencies
+dirs=$(go list -f {{.Dir}} ./...)
+
+# check that formatting and imports are correct
+report-on-errors goimports "$(for d in $dirs; do goimports -l $d/*.go; done)"
+
+# lint the code
+report-on-errors golint "$(golint ./...)"
+
+# vet the code
+report-on-errors govet "$(go vet ./...)"
