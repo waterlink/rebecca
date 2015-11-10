@@ -18,7 +18,8 @@ type Context struct {
 	Limit int
 
 	// Defines starting record for the query
-	Skip int
+	Skip   int
+	Offset int // alias of Skip
 
 	tx interface{}
 }
@@ -38,8 +39,12 @@ func (c *Context) GetLimit() int {
 	return c.Limit
 }
 
-// GetSkip is for fetching context's Skip. Used by drivers
+// GetSkip is for fetching context's Skip. Also it fetches Offset if present,
+// hence the alias. Used by drivers
 func (c *Context) GetSkip() int {
+	if c.Offset > 0 {
+		return c.Offset
+	}
 	return c.Skip
 }
 
@@ -50,46 +55,31 @@ func (c *Context) GetTx() interface{} {
 
 // SetOrder is for setting context's Order, it creates new Context. Used by drivers
 func (c *Context) SetOrder(order string) context.Context {
-	return &Context{
-		Order: order,
-		Group: c.Group,
-		Limit: c.Limit,
-		Skip:  c.Skip,
-		tx:    c.tx,
-	}
+	ctx := c.makeCopy()
+	ctx.Order = order
+	return &ctx
 }
 
 // SetGroup is for setting context's Group. Used by drivers
 func (c *Context) SetGroup(group string) context.Context {
-	return &Context{
-		Order: c.Order,
-		Group: group,
-		Limit: c.Limit,
-		Skip:  c.Skip,
-		tx:    c.tx,
-	}
+	ctx := c.makeCopy()
+	ctx.Group = group
+	return &ctx
 }
 
 // SetLimit is for setting context's Limit. Used by drivers
 func (c *Context) SetLimit(limit int) context.Context {
-	return &Context{
-		Order: c.Order,
-		Group: c.Group,
-		Limit: limit,
-		Skip:  c.Skip,
-		tx:    c.tx,
-	}
+	ctx := c.makeCopy()
+	ctx.Limit = limit
+	return &ctx
 }
 
 // SetSkip is for setting context's Skip. Used by drivers
 func (c *Context) SetSkip(skip int) context.Context {
-	return &Context{
-		Order: c.Order,
-		Group: c.Group,
-		Limit: c.Limit,
-		Skip:  skip,
-		tx:    c.tx,
-	}
+	ctx := c.makeCopy()
+	ctx.Skip = skip
+	ctx.Offset = skip
+	return &ctx
 }
 
 // All is for fetching all records
@@ -147,4 +137,8 @@ func (c *Context) First(record interface{}, query string, args ...interface{}) e
 	}
 
 	return nil
+}
+
+func (c Context) makeCopy() Context {
+	return c
 }
