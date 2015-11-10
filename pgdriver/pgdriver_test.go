@@ -237,35 +237,50 @@ func TestSkip(t *testing.T) {
 		}
 	}
 
-	ctx := &rebecca.Context{Skip: 2}
-	expected := []Person{*p3, *p4, *p5, *p6}
-	actual := []Person{}
-	if err := ctx.All(&actual); err != nil {
-		t.Fatal(err)
+	examples := map[string]struct {
+		ctx *rebecca.Context
+	}{
+		"when using Skip option it works": {
+			ctx: &rebecca.Context{Skip: 2},
+		},
+
+		"when using Offset option it should be the same": {
+			ctx: &rebecca.Context{Offset: 2},
+		},
 	}
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Expected %+v to equal %+v", actual, expected)
-	}
+	for _, e := range examples {
+		ctx := e.ctx
 
-	expected = []Person{*p5, *p6}
-	actual = []Person{}
-	if err := ctx.Where(&actual, "age > $1", 11); err != nil {
-		t.Fatal(err)
-	}
+		expected := []Person{*p3, *p4, *p5, *p6}
+		actual := []Person{}
+		if err := ctx.All(&actual); err != nil {
+			t.Fatal(err)
+		}
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Expected %+v to equal %+v", actual, expected)
-	}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("Expected %+v to equal %+v", actual, expected)
+		}
 
-	expectedOne := p4
-	actualOne := &Person{}
-	if err := ctx.First(&actualOne, "age > $1", 10); err != nil {
-		t.Fatal(err)
-	}
+		expected = []Person{*p5, *p6}
+		actual = []Person{}
+		if err := ctx.Where(&actual, "age > $1", 11); err != nil {
+			t.Fatal(err)
+		}
 
-	if !reflect.DeepEqual(actualOne, expectedOne) {
-		t.Errorf("Expected %+v to equal %+v", actualOne, expectedOne)
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("Expected %+v to equal %+v", actual, expected)
+		}
+
+		expectedOne := p4
+		actualOne := &Person{}
+		if err := ctx.First(&actualOne, "age > $1", 10); err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(actualOne, expectedOne) {
+			t.Errorf("Expected %+v to equal %+v", actualOne, expectedOne)
+		}
 	}
 }
 

@@ -21,6 +21,21 @@ func ExampleContext_All() {
 	fmt.Print(people)
 }
 
+func ExampleContext_All_skipOffsetAlias() {
+	type Person struct {
+		// ...
+	}
+
+	ctx := rebecca.Context{Limit: 20, Offset: 40}
+	people := []Person{}
+	if err := ctx.All(&people); err != nil {
+		panic(err)
+	}
+	// At this point people contains 20 Person records starting from 41th from
+	// the database.
+	fmt.Print(people)
+}
+
 func ExampleContext_First() {
 	type Person struct {
 		// ...

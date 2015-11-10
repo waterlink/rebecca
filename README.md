@@ -183,8 +183,10 @@ available options can be found here:
 [rebecca.Context](https://godoc.org/github.com/waterlink/rebecca#Context)
 
 ```go
-kidsBatch := []Person{}
 ctx := &rebecca.Context{Order: "age ASC", Limit: 300, Skip: 300}
+// you can also use `Offset: 300`
+
+kidsBatch := []Person{}
 if err := ctx.Where(&kidsBatch, "age < $1", 12); err != nil {
         // handle error here
 }
@@ -196,8 +198,8 @@ This example uses following options:
 - `Order` - ordering of the query, maps to `ORDER BY` clause in various SQL
   dialects.
 - `Limit` - maximum amount of records to be queried, maps to `LIMIT` clause.
-- `Skip` - defines amount of records to skip, maps to `OFFSET`
-  clause.
+- `Skip` (or its alias `Offset`) - defines amount of records to skip, maps to
+  `OFFSET` clause.
 
 Don't confuse `rebecca.Context` with this interface:
 [rebecca/context](https://godoc.org/github.com/waterlink/rebecca/context). This
@@ -220,8 +222,9 @@ type PeopleByAge struct {
 Next, lets query this using the `Context`:
 
 ```go
-peopleByAge := []PeopleByAge{}
 ctx := &rebecca.Context{Group: "age"}
+
+peopleByAge := []PeopleByAge{}
 if err := ctx.All(&peopleByAge); err != nil {
         // handle error here
 }
