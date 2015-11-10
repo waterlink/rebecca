@@ -1,4 +1,4 @@
-# rebecca
+# rebecca [![Build Status](https://travis-ci.org/waterlink/rebecca.svg?branch=master)](https://travis-ci.org/waterlink/rebecca)
 
 Simple database convenience wrapper for Go language.
 
