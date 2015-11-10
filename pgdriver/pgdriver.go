@@ -1,5 +1,23 @@
 // Package pgdriver provides implementation of rebecca driver for postgres. It
 // uses github.com/lib/pq and database/sql under the hood.
+//
+// Enabling this driver for rebecca:
+//
+// First import both `rebecca` and `pgdriver` in your main.go (or in your test
+// suite):
+//
+// 				import (
+// 					"github.com/waterlink/rebecca"
+//					"github.com/waterlink/rebecca/pgdriver"
+//				)
+//
+// Then in your top level func (`main` or `TestMain`):
+//
+//				d := pgdriver.NewDriver("postgres://user:pass@host:port/database?sslmode=sslmode")
+//				rebecca.SetupDriver(d)
+//
+// The same can be done through environment variables with package
+// https://godoc.org/github.com/waterlink/rebecca/pgdriver/auto
 package pgdriver
 
 import (

@@ -48,30 +48,10 @@ And in code:
 rebecca.SetupDriver(pgdriver.NewDriver("postgres://user:pass@host:port/database?sslmode=sslmode"))
 ```
 
-The same can be done with empty import:
-
-```go
-import _ "github.com/waterlink/rebecca/pgdriver/auto"
-```
-
-Empty import will fetch connection options from respective environment
-variables:
-
-- `REBECCA_PG_USER`
-- `REBECCA_PG_PASS`
-- `REBECCA_PG_HOST`
-- `REBECCA_PG_PORT`
-- `REBECCA_PG_DATABASE`
-- `REBECCA_PG_SSLMODE`
-
-or, if present: `REBECCA_PG_URL`
-
-To find out each driver's respective environment variables, see its
-documentation.
-
 ### List of supported drivers
 
 - `github.com/waterlink/rebecca/pgdriver` - driver for postgresql.
+  [Docs](https://godoc.org/github.com/waterlink/rebecca/pgdriver)
 - TODO:
   - `github.com/waterlink/rebecca/cassdriver` - driver for cassandra.
   - `github.com/waterlink/rebecca/mysqldriver` - driver for mysql.
