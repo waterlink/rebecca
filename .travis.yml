@@ -1,0 +1,18 @@
+language: go
+
+addons:
+  postgres: 9.4
+
+services:
+- postgres
+
+before_install:
+- go get -u github.com/golang/lint/golint
+- go get -u golang.org/x/tools/cmd/goimports
+
+before_script:
+- ./pgdriver/setup.sh
+
+script:
+- go test ./...
+- ./script/checks
