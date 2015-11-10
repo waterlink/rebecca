@@ -18,6 +18,12 @@ go get -u github.com/waterlink/rebecca
 import "github.com/waterlink/rebecca"
 ```
 
+It is recommended to import it as a `bec` shortcut to save some keystrokes:
+
+```go
+import bec "github.com/waterlink/rebecca"
+```
+
 ### Designing record
 
 ```go
