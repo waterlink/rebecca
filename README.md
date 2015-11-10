@@ -178,6 +178,10 @@ if err := rebecca.First(kidsCount, "age < $1", 12); err != nil {
 
 For example, to fetch second 300 records ordered by age.
 
+For that purpose use `rebecca.Context` struct, documentation on which and all
+available options can be found here:
+[rebecca.Context](https://godoc.org/github.com/waterlink/rebecca#Context)
+
 ```go
 kidsBatch := []Person{}
 ctx := &rebecca.Context{Order: "age ASC", Limit: 300, Skip: 300}
@@ -187,6 +191,11 @@ if err := ctx.Where(&kidsBatch, "age < $1", 12); err != nil {
 
 // Now you can use kidsBatch as a second batch of 300 records ordered by age.
 ```
+
+Don't confuse `rebecca.Context` with this interface:
+[rebecca/context](https://godoc.org/github.com/waterlink/rebecca/context). This
+interface is internal and used only by drivers. `rebecca.Context` implements
+it. This interface is required to avoid circular dependencies.
 
 ### Using aggregation
 
