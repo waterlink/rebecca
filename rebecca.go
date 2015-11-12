@@ -30,7 +30,7 @@
 //
 //    // Get record by its primary key
 //    p = &Person{}
-//    if err := rebecca.Get(25, p); err != nil {
+//    if err := rebecca.Get(p, 25); err != nil {
 //            // handle error here
 //    }
 //    fmt.Print(p)
@@ -50,7 +50,7 @@ func SetupDriver(d driver.Driver) {
 }
 
 // Get is for fetching one record
-func Get(ID interface{}, record interface{}) error {
+func Get(record interface{}, ID interface{}) error {
 	return get(nil, ID, record)
 }
 

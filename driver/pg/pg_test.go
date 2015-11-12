@@ -47,7 +47,7 @@ func TestSaveCreates(t *testing.T) {
 	}
 
 	actual := &Person{}
-	if err := rebecca.Get(expected.ID, actual); err != nil {
+	if err := rebecca.Get(actual, expected.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,7 +65,7 @@ func TestSaveUpdates(t *testing.T) {
 	}
 
 	expected := &Person{}
-	if err := rebecca.Get(p.ID, expected); err != nil {
+	if err := rebecca.Get(expected, p.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,7 +75,7 @@ func TestSaveUpdates(t *testing.T) {
 	}
 
 	actual := &Person{}
-	if err := rebecca.Get(p.ID, actual); err != nil {
+	if err := rebecca.Get(actual, p.ID); err != nil {
 		t.Fatal(err)
 	}
 

@@ -34,7 +34,7 @@ func ExampleBegin() {
 	// methods on `tx`:
 	// - tx.All(records)
 	// - tx.First(record, where, args...)
-	// - tx.Get(ID, record)
+	// - tx.Get(record, ID)
 	// - tx.Remove(record)
 	// - tx.Save(record)
 	// - tx.Where(records, where, args...)

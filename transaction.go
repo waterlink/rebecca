@@ -65,8 +65,8 @@ func (tx *Transaction) Commit() error {
 }
 
 // Get is for fetching one record
-func (tx *Transaction) Get(ID interface{}, record interface{}) error {
-	return get(tx.tx, ID, record)
+func (tx *Transaction) Get(record interface{}, ID interface{}) error {
+	return get(tx.tx, record, ID)
 }
 
 // Save is for saving one record (either creating or updating)
