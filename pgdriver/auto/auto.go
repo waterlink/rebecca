@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/waterlink/rebecca"
+	"github.com/waterlink/rebecca/driver"
 	"github.com/waterlink/rebecca/pgdriver"
 )
 
 func init() {
 	d := pgdriver.NewDriver(pgURL())
-	rebecca.SetupDriver(d)
+	driver.SetupDriver(d)
 }
 
 func pgURL() string {

@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/waterlink/rebecca/driver"
 	"github.com/waterlink/rebecca/field"
 )
 
 func get(tx interface{}, ID interface{}, record interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
 	meta, err := getMetadata(record)
 	if err != nil {
 		return err
@@ -18,7 +22,7 @@ func get(tx interface{}, ID interface{}, record interface{}) error {
 	idField := meta.primary
 	idField.Value = ID
 
-	fields, err := driver.Get(tx, meta.tablename, meta.fields, idField)
+	fields, err := d.Get(tx, meta.tablename, meta.fields, idField)
 	if err != nil {
 		return fmt.Errorf("Unable to find record - %s", err)
 	}
@@ -31,6 +35,9 @@ func get(tx interface{}, ID interface{}, record interface{}) error {
 }
 
 func save(tx interface{}, record interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
 	meta, err := getMetadata(record)
 	if err != nil {
 		return err
@@ -48,7 +55,7 @@ func save(tx interface{}, record interface{}) error {
 	}
 
 	if isNew {
-		if err := driver.Create(tx, meta.tablename, fields, &idField); err != nil {
+		if err := d.Create(tx, meta.tablename, fields, &idField); err != nil {
 			return fmt.Errorf("Unable to create record %+v - %s", record, err)
 		}
 
@@ -60,7 +67,7 @@ func save(tx interface{}, record interface{}) error {
 			return fmt.Errorf("Unable to fetch primary field from record %+v - %s", record, err)
 		}
 
-		if err := driver.Update(tx, meta.tablename, fields, idField); err != nil {
+		if err := d.Update(tx, meta.tablename, fields, idField); err != nil {
 			return fmt.Errorf("Unable to update record %+v - %s", record, err)
 		}
 	}
@@ -69,6 +76,9 @@ func save(tx interface{}, record interface{}) error {
 }
 
 func remove(tx interface{}, record interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
 	meta, err := getMetadata(record)
 	if err != nil {
 		return err
@@ -79,7 +89,7 @@ func remove(tx interface{}, record interface{}) error {
 		return fmt.Errorf("Unable to populate primary field of record %+v - %s", record, err)
 	}
 
-	if err := driver.Remove(tx, meta.tablename, idField); err != nil {
+	if err := d.Remove(tx, meta.tablename, idField); err != nil {
 		return fmt.Errorf("Unable to remove record %+v - %s", record, err)
 	}
 

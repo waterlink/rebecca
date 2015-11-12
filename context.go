@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/waterlink/rebecca/context"
+	"github.com/waterlink/rebecca/driver"
 )
 
 // Context is for storing query context
@@ -88,12 +89,15 @@ func (c *Context) SetSkip(skip int) context.Context {
 
 // All is for fetching all records
 func (c *Context) All(records interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
 	meta, err := getMetadata(records)
 	if err != nil {
 		return err
 	}
 
-	fieldss, err := driver.All(meta.tablename, meta.fields, c)
+	fieldss, err := d.All(meta.tablename, meta.fields, c)
 	if err != nil {
 		return fmt.Errorf("Unable to fetch all records - %s", err)
 	}
@@ -107,12 +111,15 @@ func (c *Context) All(records interface{}) error {
 
 // Where is for fetching specific records
 func (c *Context) Where(records interface{}, query string, args ...interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
 	meta, err := getMetadata(records)
 	if err != nil {
 		return err
 	}
 
-	fieldss, err := driver.Where(meta.tablename, meta.fields, c, query, args...)
+	fieldss, err := d.Where(meta.tablename, meta.fields, c, query, args...)
 	if err != nil {
 		return fmt.Errorf("Unable to fetch specific records - %s", err)
 	}
@@ -126,12 +133,15 @@ func (c *Context) Where(records interface{}, query string, args ...interface{}) 
 
 // First is for fetching only one specific record
 func (c *Context) First(record interface{}, query string, args ...interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
 	meta, err := getMetadata(record)
 	if err != nil {
 		return err
 	}
 
-	fields, err := driver.First(meta.tablename, meta.fields, c, query, args...)
+	fields, err := d.First(meta.tablename, meta.fields, c, query, args...)
 	if err != nil {
 		return fmt.Errorf("Unable to fetch specific records - %s", err)
 	}
