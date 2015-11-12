@@ -1,4 +1,4 @@
-package pgdriver
+package pg
 
 import (
 	"math"

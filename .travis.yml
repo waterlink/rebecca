@@ -11,7 +11,7 @@ before_install:
 - go get -u golang.org/x/tools/cmd/goimports
 
 before_script:
-- ./pgdriver/setup.sh
+- ./driver/pg/setup.sh
 
 script:
 - go test ./...
