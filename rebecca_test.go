@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/waterlink/rebecca/driver"
-	"github.com/waterlink/rebecca/fakedriver"
+	"github.com/waterlink/rebecca/driver/fake"
 	"github.com/waterlink/rebecca/field"
 )
 
 func TestSaveCreates(t *testing.T) {
-	driver.SetupDriver(fakedriver.NewDriver())
+	driver.SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -37,7 +37,7 @@ func TestSaveCreates(t *testing.T) {
 }
 
 func TestSaveUpdates(t *testing.T) {
-	driver.SetupDriver(fakedriver.NewDriver())
+	driver.SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -73,7 +73,7 @@ func TestSaveUpdates(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	driver.SetupDriver(fakedriver.NewDriver())
+	driver.SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -106,7 +106,7 @@ func TestAll(t *testing.T) {
 }
 
 func TestWhere(t *testing.T) {
-	d := fakedriver.NewDriver()
+	d := fake.NewDriver()
 	driver.SetupDriver(d)
 
 	d.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
@@ -171,7 +171,7 @@ func TestWhere(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
-	d := fakedriver.NewDriver()
+	d := fake.NewDriver()
 	driver.SetupDriver(d)
 
 	d.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
@@ -236,7 +236,7 @@ func TestFirst(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	d := fakedriver.NewDriver()
+	d := fake.NewDriver()
 	driver.SetupDriver(d)
 
 	type Person struct {
