@@ -10,6 +10,8 @@ package rebecca
 import (
 	"errors"
 	"fmt"
+
+	"github.com/waterlink/rebecca/driver"
 )
 
 // Transaction is for managing transactions for drivers that allow it
@@ -20,7 +22,10 @@ type Transaction struct {
 
 // Begin is for creating proper transaction
 func Begin() (*Transaction, error) {
-	tx, err := driver.Begin()
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
+	tx, err := d.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to begin transaction - %s", err)
 	}
@@ -35,7 +40,10 @@ func (tx *Transaction) Rollback() {
 		return
 	}
 
-	driver.Rollback(tx.tx)
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
+	d.Rollback(tx.tx)
 	tx.finished = true
 }
 
@@ -45,7 +53,10 @@ func (tx *Transaction) Commit() error {
 		return errors.New("Unable to commit transaction - Current transaction is already finished")
 	}
 
-	if err := driver.Commit(tx.tx); err != nil {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+
+	if err := d.Commit(tx.tx); err != nil {
 		return fmt.Errorf("Unable to commit transaction - %s", err)
 	}
 

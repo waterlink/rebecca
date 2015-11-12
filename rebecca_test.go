@@ -5,12 +5,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/waterlink/rebecca/fakedriver"
+	"github.com/waterlink/rebecca/driver"
+	"github.com/waterlink/rebecca/driver/fake"
 	"github.com/waterlink/rebecca/field"
 )
 
 func TestSaveCreates(t *testing.T) {
-	SetupDriver(fakedriver.NewDriver())
+	driver.SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -36,7 +37,7 @@ func TestSaveCreates(t *testing.T) {
 }
 
 func TestSaveUpdates(t *testing.T) {
-	SetupDriver(fakedriver.NewDriver())
+	driver.SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -72,7 +73,7 @@ func TestSaveUpdates(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	SetupDriver(fakedriver.NewDriver())
+	driver.SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -105,10 +106,10 @@ func TestAll(t *testing.T) {
 }
 
 func TestWhere(t *testing.T) {
-	driver := fakedriver.NewDriver()
-	SetupDriver(driver)
+	d := fake.NewDriver()
+	driver.SetupDriver(d)
 
-	driver.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
+	d.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
 				return f.Value.(int) < args[0].(int), nil
@@ -118,7 +119,7 @@ func TestWhere(t *testing.T) {
 		return false, fmt.Errorf("record %+v does not have age field", record)
 	})
 
-	driver.RegisterWhere("age >= $1", func(record []field.Field, args ...interface{}) (bool, error) {
+	d.RegisterWhere("age >= $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
 				return f.Value.(int) >= args[0].(int), nil
@@ -170,10 +171,10 @@ func TestWhere(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
-	driver := fakedriver.NewDriver()
-	SetupDriver(driver)
+	d := fake.NewDriver()
+	driver.SetupDriver(d)
 
-	driver.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
+	d.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
 				return f.Value.(int) < args[0].(int), nil
@@ -183,7 +184,7 @@ func TestFirst(t *testing.T) {
 		return false, fmt.Errorf("record %+v does not have age field", record)
 	})
 
-	driver.RegisterWhere("age >= $1", func(record []field.Field, args ...interface{}) (bool, error) {
+	d.RegisterWhere("age >= $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
 			if f.DriverName == "age" {
 				return f.Value.(int) >= args[0].(int), nil
@@ -235,8 +236,8 @@ func TestFirst(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	driver := fakedriver.NewDriver()
-	SetupDriver(driver)
+	d := fake.NewDriver()
+	driver.SetupDriver(d)
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`

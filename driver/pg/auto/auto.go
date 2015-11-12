@@ -1,9 +1,9 @@
-// Package auto allows one to setup rebecca/pgdriver in a convenient way from
+// Package auto allows one to setup rebecca/driver/pg in a convenient way from
 // environment variables.
 //
 // To start using auto use this nameless import:
 //
-// 				import _ "github.com/waterlink/rebecca/pgdriver/auto"
+// 				import _ "github.com/waterlink/rebecca/driver/pg/auto"
 //
 // Empty import will fetch connection options from respective environment
 // variables:
@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/waterlink/rebecca"
-	"github.com/waterlink/rebecca/pgdriver"
+	"github.com/waterlink/rebecca/driver"
+	"github.com/waterlink/rebecca/driver/pg"
 )
 
 func init() {
-	d := pgdriver.NewDriver(pgURL())
-	rebecca.SetupDriver(d)
+	d := pg.NewDriver(pgURL())
+	driver.SetupDriver(d)
 }
 
 func pgURL() string {

@@ -36,11 +36,18 @@
 //    fmt.Print(p)
 package rebecca
 
+import "github.com/waterlink/rebecca/driver"
+
 // This file contains thin exported functions only.
 //
 // For unexported functions see: helpers.go
 //
 // For Context see: context.go
+
+// SetupDriver is for configuring database driver
+func SetupDriver(d driver.Driver) {
+	driver.SetupDriver(d)
+}
 
 // Get is for fetching one record
 func Get(ID interface{}, record interface{}) error {

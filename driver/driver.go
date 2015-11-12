@@ -1,12 +1,15 @@
-package rebecca
+package driver
 
 import (
+	"sync"
+
 	"github.com/waterlink/rebecca/context"
 	"github.com/waterlink/rebecca/field"
 )
 
 var (
-	driver Driver
+	driver    Driver
+	driverMux = &sync.RWMutex{}
 )
 
 // Driver is for abstracting interaction with specific database
@@ -26,5 +29,15 @@ type Driver interface {
 
 // SetupDriver is for setting up driver manually
 func SetupDriver(d Driver) {
+	driverMux.Lock()
+	defer driverMux.Unlock()
+
 	driver = d
+}
+
+// Get is for fetching the driver instance, it returns reader lock
+func Get() (Driver, sync.Locker) {
+	lock := driverMux.RLocker()
+	lock.Lock()
+	return driver, lock
 }

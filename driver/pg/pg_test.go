@@ -1,4 +1,4 @@
-package pgdriver
+package pg
 
 import (
 	"math"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/waterlink/rebecca"
+	"github.com/waterlink/rebecca/driver"
 )
 
 const (
@@ -502,7 +503,7 @@ func setup(t *testing.T) {
 	d := NewDriver(pgURL)
 	d.exec(t, "DELETE FROM people")
 	d.exec(t, "DELETE FROM posts")
-	rebecca.SetupDriver(d)
+	driver.SetupDriver(d)
 }
 
 func equalPosts(l, r []Post) bool {

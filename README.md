@@ -39,23 +39,23 @@ type Person struct {
 ### Enabling specific driver
 
 ```go
-import "github.com/waterlink/rebecca/pgdriver"
+import "github.com/waterlink/rebecca/driver/pg"
 ```
 
 And in code:
 
 ```go
-rebecca.SetupDriver(pgdriver.NewDriver("postgres://user:pass@host:port/database?sslmode=sslmode"))
+rebecca.SetupDriver(pg.NewDriver("postgres://user:pass@host:port/database?sslmode=sslmode"))
 ```
 
 ### List of supported drivers
 
-- `github.com/waterlink/rebecca/pgdriver` - driver for postgresql.
-  [Docs](https://godoc.org/github.com/waterlink/rebecca/pgdriver)
+- `github.com/waterlink/rebecca/driver/pg` - driver for postgresql.
+  [Docs](https://godoc.org/github.com/waterlink/rebecca/driver/pg)
 - TODO:
-  - `github.com/waterlink/rebecca/cassdriver` - driver for cassandra.
-  - `github.com/waterlink/rebecca/mysqldriver` - driver for mysql.
-  - `github.com/waterlink/rebecca/mongodriver` - driver for mongodb.
+  - `github.com/waterlink/rebecca/driver/cassandra` - driver for cassandra.
+  - `github.com/waterlink/rebecca/driver/mysql` - driver for mysql.
+  - `github.com/waterlink/rebecca/driver/mongo` - driver for mongodb.
 
 ### Fetching the record
 
