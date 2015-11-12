@@ -39,7 +39,7 @@ func ExampleGet() {
 	}
 
 	person := &Person{}
-	if err := rebecca.Get(25, person); err != nil {
+	if err := rebecca.Get(person, 25); err != nil {
 		panic(err)
 	}
 	// At this point person contains record with primary key equal to 25.
@@ -53,7 +53,7 @@ func ExampleRemove() {
 
 	// First lets find person with primary key = 25
 	person := &Person{}
-	if err := rebecca.Get(25, person); err != nil {
+	if err := rebecca.Get(person, 25); err != nil {
 		panic(err)
 	}
 

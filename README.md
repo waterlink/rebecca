@@ -61,7 +61,7 @@ rebecca.SetupDriver(pg.NewDriver("postgres://user:pass@host:port/database?sslmod
 
 ```go
 var p Person
-if err := rebecca.Get(ID, &p); err != nil {
+if err := rebecca.Get(&p, ID); err != nil {
         // handle error here
 }
 
@@ -79,7 +79,7 @@ if err := rebecca.Save(p); err != nil {
 
 // updates the record
 p := &Person{}
-if err := rebecca.Get(ID, p); err != nil {
+if err := rebecca.Get(p, ID); err != nil {
         // handle error here
 }
 
