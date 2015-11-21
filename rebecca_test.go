@@ -408,6 +408,24 @@ func TestInvalidMetadata(t *testing.T) {
 			action: func(x interface{}) error { return Remove(x) },
 			err:    errors.New(nonStructError),
 		},
+
+		"All fails when metadata is missing": {
+			thing:  []MissingMetadata{},
+			action: func(x interface{}) error { return All(x) },
+			err:    errors.New(missingMetadataError),
+		},
+
+		"Where fails when metadata is missing": {
+			thing:  []MissingMetadata{},
+			action: func(x interface{}) error { return Where(x, "true") },
+			err:    errors.New(missingMetadataError),
+		},
+
+		"First fails when metadata is missing": {
+			thing:  &MissingMetadata{},
+			action: func(x interface{}) error { return First(x, "true") },
+			err:    errors.New(missingMetadataError),
+		},
 	}
 
 	for info, e := range examples {
