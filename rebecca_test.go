@@ -1,17 +1,17 @@
 package rebecca
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/waterlink/rebecca/driver"
 	"github.com/waterlink/rebecca/driver/fake"
 	"github.com/waterlink/rebecca/field"
 )
 
 func TestSaveCreates(t *testing.T) {
-	driver.SetupDriver(fake.NewDriver())
+	SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -37,7 +37,7 @@ func TestSaveCreates(t *testing.T) {
 }
 
 func TestSaveUpdates(t *testing.T) {
-	driver.SetupDriver(fake.NewDriver())
+	SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -73,7 +73,7 @@ func TestSaveUpdates(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	driver.SetupDriver(fake.NewDriver())
+	SetupDriver(fake.NewDriver())
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -107,7 +107,7 @@ func TestAll(t *testing.T) {
 
 func TestWhere(t *testing.T) {
 	d := fake.NewDriver()
-	driver.SetupDriver(d)
+	SetupDriver(d)
 
 	d.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
@@ -172,7 +172,7 @@ func TestWhere(t *testing.T) {
 
 func TestFirst(t *testing.T) {
 	d := fake.NewDriver()
-	driver.SetupDriver(d)
+	SetupDriver(d)
 
 	d.RegisterWhere("age < $1", func(record []field.Field, args ...interface{}) (bool, error) {
 		for _, f := range record {
@@ -237,7 +237,7 @@ func TestFirst(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	d := fake.NewDriver()
-	driver.SetupDriver(d)
+	SetupDriver(d)
 
 	type Person struct {
 		ModelMetadata `tablename:"people"`
@@ -272,4 +272,158 @@ func TestRemove(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Expected %+v to equal to %+v", actual, expected)
 	}
+}
+
+func TestInvalidMetadata(t *testing.T) {
+	type Person struct {
+		ModelMetadata `tablename:"people"`
+
+		ID   int    `rebecca:"id" rebecca_primary:"true"`
+		Name string `rebecca:"name"`
+	}
+
+	type MissingMetadata struct {
+		ID   int    `rebecca:"id" rebecca_primary:"true"`
+		Name string `rebecca:"name"`
+	}
+
+	type IncorrectMetadata struct {
+		ModelMetadata string `tablename:"people"`
+		ID            int    `rebecca:"id" rebecca_primary:"true"`
+		Name          string `rebecca:"name"`
+	}
+
+	type MissingTablename struct {
+		ModelMetadata
+		ID   int    `rebecca:"id" rebecca_primary:"true"`
+		Name string `rebecca:"name"`
+	}
+
+	type NoPrimary struct {
+		ModelMetadata `tablename:"noprimaries"`
+
+		ID   int    `rebecca:"id"`
+		Name string `rebecca:"name"`
+	}
+
+	type NonStruct []int
+
+	missingMetadataError := `Unable to fetch record's metadata - type=github.com/waterlink/rebecca.MissingMetadata - Rebecca's model is required to embed rebecca.ModelMetadata`
+	missingPrimaryField := "Record has no primary field - type=github.com/waterlink/rebecca.NoPrimary - Use `rebecca_primary:\"true\"` annotation"
+	nonStructError := `Unable to fetch record's metadata - type=.int - Rebecca's model is required to be struct, but got: &[]`
+	incorrectMetadataError := `Unable to fetch record's metadata - type=github.com/waterlink/rebecca.IncorrectMetadata - Rebecca's model is required to embed rebecca.ModelMetadata`
+	missingTablenameError := `Unable to fetch record's metadata - type=github.com/waterlink/rebecca.MissingTablename - tablename tag metadata is missing on ModelMetadata`
+	notAccessibleError := `Unable to assign primary field for record {ModelMetadata:{} ID:0 Name:} - Unable to set field ID on record {ModelMetadata:{} ID:0 Name:}. It is required to be exported and addressable`
+	notAccessibleOnGet := `Unable to construct found record - Unable to set field ID on record {ModelMetadata:{} ID:0 Name:}. It is required to be exported and addressable`
+
+	examples := map[string]struct {
+		thing  interface{}
+		action func(interface{}) error
+		err    error
+	}{
+		"Save fails when metadata is missing": {
+			thing:  &MissingMetadata{Name: "stuff"},
+			action: func(x interface{}) error { return Save(x) },
+			err:    errors.New(missingMetadataError),
+		},
+
+		"Save fails when metadata's tablename is missing": {
+			thing:  &MissingTablename{Name: "stuff"},
+			action: func(x interface{}) error { return Save(x) },
+			err:    errors.New(missingTablenameError),
+		},
+
+		"Save fails when metadata is of incorrect type": {
+			thing:  &IncorrectMetadata{Name: "stuff"},
+			action: func(x interface{}) error { return Save(x) },
+			err:    errors.New(incorrectMetadataError),
+		},
+
+		"Save fails when there is no primary key defined": {
+			thing:  &NoPrimary{Name: "James"},
+			action: func(x interface{}) error { return Save(x) },
+			err:    errors.New(missingPrimaryField),
+		},
+
+		"Save fails when model is not struct": {
+			thing:  &NonStruct{},
+			action: func(x interface{}) error { return Save(x) },
+			err:    errors.New(nonStructError),
+		},
+
+		"Save fails when thing is not accessible": {
+			thing:  Person{},
+			action: func(x interface{}) error { return Save(x) },
+			err:    errors.New(notAccessibleError),
+		},
+
+		"Get fails when metadata is missing": {
+			thing:  &MissingMetadata{},
+			action: func(x interface{}) error { return Get(x, 123) },
+			err:    errors.New(missingMetadataError),
+		},
+
+		"Get fails when metadata is of incorrect type": {
+			thing:  &IncorrectMetadata{},
+			action: func(x interface{}) error { return Get(x, 123) },
+			err:    errors.New(incorrectMetadataError),
+		},
+
+		"Get fails when model is not struct": {
+			thing:  &NonStruct{},
+			action: func(x interface{}) error { return Get(x, "hello") },
+			err:    errors.New(nonStructError),
+		},
+
+		"Get fails when thing is not accessible": {
+			thing: Person{},
+			action: func(x interface{}) error {
+				p := x.(Person)
+				Save(&p)
+				return Get(x, p.ID)
+			},
+			err: errors.New(notAccessibleOnGet),
+		},
+
+		"Remove fails when metadata is missing": {
+			thing:  &MissingMetadata{Name: "John", ID: 123},
+			action: func(x interface{}) error { return Remove(x) },
+			err:    errors.New(missingMetadataError),
+		},
+
+		"Remove fails when metadata is of incorrect type": {
+			thing:  &IncorrectMetadata{Name: "John", ID: 123},
+			action: func(x interface{}) error { return Remove(x) },
+			err:    errors.New(incorrectMetadataError),
+		},
+
+		"Remove fails when there is no primary key defined": {
+			thing:  &NoPrimary{Name: "James", ID: 123},
+			action: func(x interface{}) error { return Remove(x) },
+			err:    errors.New(missingPrimaryField),
+		},
+
+		"Remove fails when model is not struct": {
+			thing:  &NonStruct{},
+			action: func(x interface{}) error { return Remove(x) },
+			err:    errors.New(nonStructError),
+		},
+	}
+
+	for info, e := range examples {
+		t.Log(info)
+		err := e.action(e.thing)
+		actual := errRepr(err)
+		expected := errRepr(e.err)
+		if actual != expected {
+			t.Errorf("Expected %s to equal %s", actual, expected)
+		}
+	}
+}
+
+func errRepr(err error) string {
+	if err == nil {
+		return "<nil :: error>"
+	}
+	return err.Error()
 }

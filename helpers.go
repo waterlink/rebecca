@@ -49,6 +49,10 @@ func save(tx interface{}, record interface{}) error {
 	}
 
 	idField := meta.primary
+	if err := ensureHasID(record, idField); err != nil {
+		return err
+	}
+
 	isNew, err := isNewRecord(record, idField)
 	if err != nil {
 		return fmt.Errorf("Unable to determine if record %+v is new - %s", record, err)
@@ -85,6 +89,10 @@ func remove(tx interface{}, record interface{}) error {
 	}
 
 	idField := meta.primary
+	if err := ensureHasID(record, idField); err != nil {
+		return err
+	}
+
 	if err := populateFieldValue(record, &idField); err != nil {
 		return fmt.Errorf("Unable to populate primary field of record %+v - %s", record, err)
 	}
@@ -100,7 +108,8 @@ func getMetadata(record interface{}) (metadata, error) {
 	meta, err := fetchMetadata(record)
 	if err != nil {
 		return metadata{}, fmt.Errorf(
-			"Unable to fetch record's metadata - All records are required to embed rebecca.ModelMetadata - %s",
+			"Unable to fetch record's metadata - type=%s - %s",
+			typeName(record),
 			err,
 		)
 	}
@@ -116,6 +125,14 @@ func typeHasElem(ty reflect.Type) bool {
 func valueHasElem(v reflect.Value) bool {
 	return v.Kind() == reflect.Ptr ||
 		v.Kind() == reflect.Interface
+}
+
+func typeName(record interface{}) string {
+	ty := reflect.TypeOf(record)
+	for typeHasElem(ty) {
+		ty = ty.Elem()
+	}
+	return ty.PkgPath() + "." + ty.Name()
 }
 
 func fetchMetadata(record interface{}) (metadata, error) {
@@ -293,5 +310,15 @@ func populateRecordsFromFieldss(records interface{}, fieldss [][]field.Field) er
 		v.Set(reflect.Append(v, reflect.ValueOf(record).Elem()))
 	}
 
+	return nil
+}
+
+func ensureHasID(record interface{}, idField field.Field) error {
+	if !idField.Primary {
+		return fmt.Errorf(
+			"Record has no primary field - type=%s - Use `rebecca_primary:\"true\"` annotation",
+			typeName(record),
+		)
+	}
 	return nil
 }
