@@ -18,4 +18,4 @@ report-on-errors goimports "$(for d in $dirs; do goimports -l $d/*.go; done)"
 report-on-errors golint "$(golint ./...)"
 
 # vet the code
-report-on-errors govet "$(go vet ./...)"
+report-on-errors govet "$(go vet ./... 2>&1)"

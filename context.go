@@ -87,6 +87,13 @@ func (c *Context) SetSkip(skip int) context.Context {
 	return &ctx
 }
 
+// SetTx is for setting context's Tx. Used by drivers
+func (c *Context) SetTx(tx interface{}) context.Context {
+	ctx := c.makeCopy()
+	ctx.tx = tx
+	return &ctx
+}
+
 // All is for fetching all records
 func (c *Context) All(records interface{}) error {
 	d, lock := driver.Get()
