@@ -39,5 +39,9 @@ func SetupDriver(d Driver) {
 func Get() (Driver, sync.Locker) {
 	lock := driverMux.RLocker()
 	lock.Lock()
+	if driver == nil {
+		defer lock.Unlock()
+		panic("rebecca: Driver is not configured. Please use rebecca.SetupDriver to configure it")
+	}
 	return driver, lock
 }
