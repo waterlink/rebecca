@@ -13,4 +13,5 @@ type Context interface {
 	SetGroup(string) Context
 	SetLimit(int) Context
 	SetSkip(int) Context
+	SetTx(interface{}) Context
 }

@@ -15,6 +15,9 @@ type Driver struct {
 	whereRegistry map[string]func([]field.Field, ...interface{}) (bool, error)
 	records       map[string][][]field.Field
 	maxID         int
+	createdIDs    map[int]struct{}
+	updatedIDs    map[int]struct{}
+	removedIDs    map[field.Field]string
 }
 
 // NewDriver is for creating new fake driver
@@ -22,11 +25,18 @@ func NewDriver() *Driver {
 	return &Driver{
 		whereRegistry: map[string]func([]field.Field, ...interface{}) (bool, error){},
 		records:       map[string][][]field.Field{},
+		createdIDs:    map[int]struct{}{},
+		updatedIDs:    map[int]struct{}{},
+		removedIDs:    map[field.Field]string{},
 	}
 }
 
 // Get is for fetching single record by its ID
 func (d *Driver) Get(tx interface{}, tablename string, fields []field.Field, ID field.Field) ([]field.Field, error) {
+	if tx != nil {
+		return tx.(*Driver).Get(nil, tablename, fields, ID)
+	}
+
 	for _, record := range d.getTable(tablename) {
 		if hasField(record, ID) {
 			return record, nil
@@ -38,19 +48,29 @@ func (d *Driver) Get(tx interface{}, tablename string, fields []field.Field, ID 
 
 // Create is for creating new record. Mutates passed ID
 func (d *Driver) Create(tx interface{}, tablename string, fields []field.Field, ID *field.Field) error {
+	if tx != nil {
+		return tx.(*Driver).Create(nil, tablename, fields, ID)
+	}
+
 	d.maxID++
 	ID.Value = d.maxID
 	changeID(fields, *ID)
 	d.insertTo(tablename, fields)
+	d.createdIDs[d.maxID] = struct{}{}
 	return nil
 }
 
 // Update is for updating existing record
 func (d *Driver) Update(tx interface{}, tablename string, fields []field.Field, ID field.Field) error {
+	if tx != nil {
+		return tx.(*Driver).Update(tx, tablename, fields, ID)
+	}
+
 	records := d.getTable(tablename)
 	for i, record := range records {
 		if hasField(record, ID) {
 			records[i] = fields
+			d.updatedIDs[ID.Value.(int)] = struct{}{}
 			return nil
 		}
 	}
@@ -60,11 +80,19 @@ func (d *Driver) Update(tx interface{}, tablename string, fields []field.Field, 
 
 // All is for fetching all records
 func (d *Driver) All(tablename string, fields []field.Field, ctx context.Context) ([][]field.Field, error) {
+	if tx := ctx.GetTx(); tx != nil {
+		return tx.(*Driver).All(tablename, fields, ctx.SetTx(nil))
+	}
+
 	return d.getTable(tablename), nil
 }
 
 // Where is for fetching specific records
 func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([][]field.Field, error) {
+	if tx := ctx.GetTx(); tx != nil {
+		return tx.(*Driver).Where(tablename, fields, ctx.SetTx(nil), where, args...)
+	}
+
 	result := [][]field.Field{}
 
 	fn, ok := d.whereRegistry[where]
@@ -91,6 +119,10 @@ func (d *Driver) Where(tablename string, fields []field.Field, ctx context.Conte
 
 // First is for fetching first specific record
 func (d *Driver) First(tablename string, fields []field.Field, ctx context.Context, where string, args ...interface{}) ([]field.Field, error) {
+	if tx := ctx.GetTx(); tx != nil {
+		return tx.(*Driver).First(tablename, fields, ctx.SetTx(nil), where, args...)
+	}
+
 	records, err := d.Where(tablename, fields, ctx, where, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get first record - %s", err)
@@ -105,6 +137,10 @@ func (d *Driver) First(tablename string, fields []field.Field, ctx context.Conte
 
 // Remove is for removing record by provided ID from database
 func (d *Driver) Remove(tx interface{}, tablename string, ID field.Field) error {
+	if tx != nil {
+		return tx.(*Driver).Remove(nil, tablename, ID)
+	}
+
 	records := [][]field.Field{}
 
 	for _, record := range d.getTable(tablename) {
@@ -113,25 +149,78 @@ func (d *Driver) Remove(tx interface{}, tablename string, ID field.Field) error 
 		}
 	}
 
+	d.removedIDs[ID] = tablename
 	d.records[tablename] = records
 	return nil
 }
 
 // HasTransactions indicates transaction support of the driver
 func (d *Driver) HasTransactions() bool {
-	return false
+	return true
 }
 
 // Begin is for starting new transaction and returning relevant state
 func (d *Driver) Begin() (interface{}, error) {
-	return nil, errors.New("fakedriver does not support transactions")
+	//return nil, errors.New("fakedriver does not support transactions")
+	tx := &Driver{
+		whereRegistry: d.whereRegistry,
+		records:       map[string][][]field.Field{},
+		maxID:         d.maxID,
+		createdIDs:    map[int]struct{}{},
+		updatedIDs:    map[int]struct{}{},
+		removedIDs:    map[field.Field]string{},
+	}
+	d.maxID = d.maxID + 1000
+
+	for tablename, table := range d.records {
+		newTable := [][]field.Field{}
+		for _, row := range table {
+			newRow := []field.Field{}
+			for _, field := range row {
+				newField := field
+				newRow = append(newRow, newField)
+			}
+			newTable = append(newTable, newRow)
+		}
+		tx.records[tablename] = newTable
+	}
+
+	return tx, nil
 }
 
 // Rollback is for rolling back the transaction
 func (d *Driver) Rollback(interface{}) {}
 
 // Commit is for committing the transaction
-func (d *Driver) Commit(interface{}) error { return nil }
+func (d *Driver) Commit(tx interface{}) error {
+	if tx == nil {
+		return errors.New("Unable to commit non-existing transaction")
+	}
+
+	dtx := tx.(*Driver)
+	for tablename, table := range dtx.records {
+		for _, row := range table {
+			id := getPrimary(row)
+			if _, ok := dtx.createdIDs[id.Value.(int)]; ok {
+				d.records[tablename] = append(d.records[tablename], row)
+			}
+
+			if _, ok := dtx.updatedIDs[id.Value.(int)]; ok {
+				if err := d.Update(nil, tablename, row, id); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	for id, tablename := range dtx.removedIDs {
+		if err := d.Remove(nil, tablename, id); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 // RegisterWhere is for registering fake where query
 func (d *Driver) RegisterWhere(where string, fn func([]field.Field, ...interface{}) (bool, error)) {
@@ -172,4 +261,13 @@ func changeID(record []field.Field, ID field.Field) {
 			return
 		}
 	}
+}
+
+func getPrimary(record []field.Field) field.Field {
+	for _, f := range record {
+		if f.Primary {
+			return f
+		}
+	}
+	return field.Field{}
 }

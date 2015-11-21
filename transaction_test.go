@@ -2,8 +2,13 @@ package rebecca_test
 
 import (
 	"fmt"
+	"math"
+	"testing"
+	"time"
 
 	"github.com/waterlink/rebecca"
+	"github.com/waterlink/rebecca/driver/fake"
+	"github.com/waterlink/rebecca/field"
 )
 
 func ExampleBegin() {
@@ -98,5 +103,273 @@ func ExampleTransaction_Context() {
 }
 
 func someBadCondition() bool {
+	return true
+}
+
+type Person struct {
+	rebecca.ModelMetadata `tablename:"people"`
+
+	ID   int    `rebecca:"id" rebecca_primary:"true"`
+	Name string `rebecca:"name"`
+	Age  int    `rebecca:"age"`
+}
+
+type Post struct {
+	rebecca.ModelMetadata `tablename:"posts"`
+
+	ID        int       `rebecca:"id" rebecca_primary:"true"`
+	Title     string    `rebecca:"title"`
+	Content   string    `rebecca:"content"`
+	CreatedAt time.Time `rebecca:"created_at"`
+}
+
+func (p *Post) Equal(other *Post) bool {
+	return p.ID == other.ID &&
+		p.Title == other.Title &&
+		p.Content == other.Content &&
+		math.Abs(float64(p.CreatedAt.Sub(other.CreatedAt))) < 500 // microseconds
+}
+
+func TestTransactions(t *testing.T) {
+	d := fake.NewDriver()
+	rebecca.SetupDriver(d)
+
+	d.RegisterWhere("title = $1", func(record []field.Field, args ...interface{}) (bool, error) {
+		for _, f := range record {
+			if f.DriverName == "title" {
+				return f.Value.(string) == args[0].(string), nil
+			}
+		}
+
+		return false, fmt.Errorf("record %+v does not have title field", record)
+	})
+
+	txa, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer txa.Rollback()
+
+	txb, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer txb.Rollback()
+
+	pa := &Post{Title: "Hello world", Content: "Content of Hello World, many hellos", CreatedAt: time.Now()}
+	if err := txa.Save(pa); err != nil {
+		t.Fatal(err)
+	}
+
+	pa2 := &Post{Title: "Hello Blog", Content: "More hellos here!", CreatedAt: time.Now()}
+	if err := txa.Save(pa2); err != nil {
+		t.Fatal(err)
+	}
+
+	actual := &Post{}
+	if err := txa.Get(pa.ID, actual); err != nil {
+		t.Fatal(err)
+	}
+
+	actual = &Post{}
+	if err := txb.Get(pa.ID, actual); err == nil {
+		t.Errorf(
+			"Expected transaction B not to find record saved in transaction A, but got: %+v",
+			actual,
+		)
+	}
+
+	pb := &Post{Title: "Super Post", Content: "Super Content", CreatedAt: time.Now()}
+	if err := txb.Save(pb); err != nil {
+		t.Fatal(err)
+	}
+
+	actual = &Post{}
+	if err := txa.Get(pb.ID, actual); err == nil {
+		t.Errorf(
+			"Expected transaction A not to find record saved in transaction B, but got: %+v",
+			actual,
+		)
+	}
+
+	expecteds := []Post{*pa, *pa2}
+	actuals := []Post{}
+	if err := txa.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{*pa}
+	actuals = []Post{}
+	if err := txa.Where(&actuals, "title = $1", "Hello world"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{*pa2}
+	actuals = []Post{}
+	if err := txa.Where(&actuals, "title = $1", "Hello Blog"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{}
+	actuals = []Post{}
+	if err := txa.Where(&actuals, "title = $1", "Super Post"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{*pb}
+	actuals = []Post{}
+	if err := txb.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	if err := txa.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	txb.Rollback()
+
+	txc, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual = &Post{}
+	if err := txc.Get(pa.ID, actual); err != nil {
+		t.Fatal(err)
+	}
+
+	if !actual.Equal(pa) {
+		t.Errorf("Expected %+v to equal %+v", actual, pa)
+	}
+
+	expecteds = []Post{}
+	actuals = []Post{}
+	if err := txc.Where(&actuals, "title = $1", "Super Post"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expected := pa2
+	actual = &Post{}
+	if err := txc.First(actual, "title = $1", "Hello Blog"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !actual.Equal(expected) {
+		t.Errorf("Expected %+v to equal %+v", actual, expected)
+	}
+
+	txd, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := txd.Remove(pa); err != nil {
+		t.Fatal(err)
+	}
+
+	expecteds = []Post{*pa2}
+	actuals = []Post{}
+	if err := txd.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{*pa, *pa2}
+	actuals = []Post{}
+	if err := txc.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	expecteds = []Post{*pa, *pa2}
+	actuals = []Post{}
+	if err := rebecca.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+
+	if err := txd.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	expecteds = []Post{*pa2}
+	actuals = []Post{}
+	if err := rebecca.All(&actuals); err != nil {
+		t.Fatal(err)
+	}
+
+	if !equalPosts(actuals, expecteds) {
+		t.Errorf("Expected %+v to equal %+v", actuals, expecteds)
+	}
+}
+
+func TestDoubleCommit(t *testing.T) {
+	rebecca.SetupDriver(fake.NewDriver())
+
+	tx, err := rebecca.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	err = tx.Commit()
+	if err == nil {
+		t.Fatal("Expected transaction to no being able to be committed twice")
+	}
+
+	expected := `Unable to commit transaction - Current transaction is already finished`
+	actual := err.Error()
+	if actual != expected {
+		t.Errorf("Expected %s to equal %s", actual, expected)
+	}
+}
+
+func equalPosts(l, r []Post) bool {
+	if len(l) != len(r) {
+		return false
+	}
+
+	for i := range l {
+		if !l[i].Equal(&r[i]) {
+			return false
+		}
+	}
+
 	return true
 }
