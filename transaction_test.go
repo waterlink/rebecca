@@ -1,6 +1,7 @@
 package rebecca_test
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -10,6 +11,40 @@ import (
 	"github.com/waterlink/rebecca/driver/fake"
 	"github.com/waterlink/rebecca/field"
 )
+
+func ExampleTransact() {
+	type Person struct {
+		// ...
+	}
+
+	rebecca.Transact(func(tx *rebecca.Transaction) error {
+		// Now you can use `tx` the same way as `rebecca` package, i.e.:
+		people := []Person{}
+		if err := tx.Where(&people, "name = $1 AND age > $2", "James", 25); err != nil {
+			// returning non-nil result here will make transaction roll back
+			return err
+			// panicking will achieve the same result
+			// panic(err)
+		}
+
+		// At this point people contains all Person records with name="James" and
+		// with age > 25.
+		fmt.Print(people)
+
+		// This way you can use all main exported functions of rebecca package as
+		// methods on `tx`:
+		// - tx.All(records)
+		// - tx.First(record, where, args...)
+		// - tx.Get(record, ID)
+		// - tx.Remove(record)
+		// - tx.Save(record)
+		// - tx.Where(records, where, args...)
+
+		// For example:
+		record := &Person{}
+		return tx.Save(record)
+	})
+}
 
 func ExampleBegin() {
 	type Person struct {
@@ -372,4 +407,97 @@ func equalPosts(l, r []Post) bool {
 	}
 
 	return true
+}
+
+func TestTransact(t *testing.T) {
+	now := time.Now()
+	var p *Post
+
+	examples := map[string]struct {
+		handler func(tx *rebecca.Transaction) error
+		verify  func(err error) error
+	}{
+
+		"when handler succeeds": {
+			handler: func(tx *rebecca.Transaction) error {
+				p = &Post{Title: "Hello", Content: "World", CreatedAt: now}
+				return tx.Save(p)
+			},
+
+			verify: func(err error) error {
+				if err != nil {
+					return fmt.Errorf("Expected handler to not fail, but got: %s", err)
+				}
+
+				actual := &Post{}
+				if err := rebecca.Get(actual, p.ID); err != nil {
+					return fmt.Errorf("Expected rebecca.Get(actual, %d) to not fail, but got: %s", p.ID, err)
+				}
+
+				if !actual.Equal(p) {
+					return fmt.Errorf("Expected %#v to equal %#v", actual, p)
+				}
+
+				return nil
+			},
+		},
+
+		"when handler fails": {
+			handler: func(tx *rebecca.Transaction) error {
+				p = &Post{Title: "Hello", Content: "World", CreatedAt: now}
+				tx.Save(p)
+				return errors.New("I have failed")
+			},
+
+			verify: func(err error) error {
+				if err == nil {
+					return errors.New("Expected handler to fail, but got nil")
+				}
+
+				if err.Error() != "I have failed" {
+					return fmt.Errorf("Expected error to be 'I have failed', but got: '%s'", err)
+				}
+
+				actual := &Post{}
+				if err := rebecca.Get(actual, p.ID); err == nil {
+					return fmt.Errorf("Expected rebecca.Get(actual, %d) to fail, but got nil", p.ID)
+				}
+
+				return nil
+			},
+		},
+
+		"when handler panics": {
+			handler: func(tx *rebecca.Transaction) error {
+				p = &Post{Title: "Hello", Content: "World", CreatedAt: now}
+				tx.Save(p)
+				panic("I have a panic!")
+			},
+
+			verify: func(err error) error {
+				if err == nil {
+					return errors.New("Expected handler to fail, but got nil")
+				}
+
+				if err.Error() != "I have a panic! (recovered)" {
+					return fmt.Errorf("Expected error to be 'I have a panic! (recovered)', but got: '%s'", err)
+				}
+
+				actual := &Post{}
+				if err := rebecca.Get(actual, p.ID); err == nil {
+					return fmt.Errorf("Expected rebecca.Get(actual, %d) to fail, but got nil", p.ID)
+				}
+
+				return nil
+			},
+		},
+	}
+
+	for info, e := range examples {
+		t.Log(info)
+		p = nil
+		if err := e.verify(rebecca.Transact(e.handler)); err != nil {
+			t.Error(err)
+		}
+	}
 }

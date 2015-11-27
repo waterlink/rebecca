@@ -218,6 +218,24 @@ This example uses folowing option of `rebecca.Context`:
 
 ### Using transactions
 
+#### Simple usage
+
+```go
+rebecca.Transact(func(tx *rebecca.Transaction) error {
+	p := &Person{...}
+	if err != tx.Save(p); err != nil {
+		return fmt.Errorf("Unable to save person - %s", err)
+	}
+
+  // .. do more stuff within transaction ..
+})
+```
+
+In case provided function returned error or panicked, it will roll transaction
+back. Otherwise it will commit it.
+
+#### Advanced usage
+
 First, obtain `rebecca.Transaction` object by doing:
 
 ```go

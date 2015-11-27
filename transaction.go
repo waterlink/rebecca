@@ -20,6 +20,28 @@ type Transaction struct {
 	finished bool
 }
 
+// Transact is for abstracting transaction handling. It commits transaction if
+// fn returned nil, otherwise it rolls transaction back.
+func Transact(fn func(tx *Transaction) error) (err error) {
+	tx, err := Begin()
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("%s (recovered)", p)
+		}
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	return fn(tx)
+}
+
 // Begin is for creating proper transaction
 func Begin() (*Transaction, error) {
 	d, lock := driver.Get()
