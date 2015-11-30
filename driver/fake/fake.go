@@ -10,14 +10,22 @@ import (
 	"github.com/waterlink/rebecca/field"
 )
 
+// ReceivedExec represents received exec query by fake driver
+type ReceivedExec struct {
+	Tx    interface{}
+	Query string
+	Args  []interface{}
+}
+
 // Driver represents fake driver for tests
 type Driver struct {
-	whereRegistry map[string]func([]field.Field, ...interface{}) (bool, error)
-	records       map[string][][]field.Field
-	maxID         int
-	createdIDs    map[int]struct{}
-	updatedIDs    map[int]struct{}
-	removedIDs    map[field.Field]string
+	whereRegistry    map[string]func([]field.Field, ...interface{}) (bool, error)
+	records          map[string][][]field.Field
+	maxID            int
+	createdIDs       map[int]struct{}
+	updatedIDs       map[int]struct{}
+	removedIDs       map[field.Field]string
+	lastReceivedExec ReceivedExec
 }
 
 // NewDriver is for creating new fake driver
@@ -222,9 +230,24 @@ func (d *Driver) Commit(tx interface{}) error {
 	return nil
 }
 
+// Exec is for executing arbitrary query discarding its result
+func (d *Driver) Exec(tx interface{}, query string, args ...interface{}) error {
+	d.lastReceivedExec = ReceivedExec{
+		Tx:    tx,
+		Query: query,
+		Args:  args,
+	}
+	return nil
+}
+
 // RegisterWhere is for registering fake where query
 func (d *Driver) RegisterWhere(where string, fn func([]field.Field, ...interface{}) (bool, error)) {
 	d.whereRegistry[where] = fn
+}
+
+// ReceivedExec is for fetching last executed query
+func (d *Driver) ReceivedExec() ReceivedExec {
+	return d.lastReceivedExec
 }
 
 func (d *Driver) ensureTable(name string) {

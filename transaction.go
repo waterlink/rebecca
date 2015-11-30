@@ -119,6 +119,11 @@ func (tx *Transaction) Remove(record interface{}) error {
 	return remove(tx.tx, record)
 }
 
+// Exec is for executing a query within transaction and discarding its result
+func (tx *Transaction) Exec(query string, args ...interface{}) error {
+	return exec(tx.tx, query, args...)
+}
+
 // Context is for instantiating proper context for transaction
 func (tx *Transaction) Context(ctx *Context) *Context {
 	return &Context{

@@ -81,3 +81,8 @@ func Save(record interface{}) error {
 func Remove(record interface{}) error {
 	return remove(nil, record)
 }
+
+// Exec is for executing arbitrary query and discarding its result
+func Exec(query string, args ...interface{}) error {
+	return exec(nil, query, args...)
+}

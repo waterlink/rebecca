@@ -104,6 +104,12 @@ func remove(tx interface{}, record interface{}) error {
 	return nil
 }
 
+func exec(tx interface{}, query string, args ...interface{}) error {
+	d, lock := driver.Get()
+	defer lock.Unlock()
+	return d.Exec(tx, query, args...)
+}
+
 func getMetadata(record interface{}) (metadata, error) {
 	meta, err := fetchMetadata(record)
 	if err != nil {

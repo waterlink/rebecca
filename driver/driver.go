@@ -25,6 +25,7 @@ type Driver interface {
 	Begin() (interface{}, error)
 	Rollback(tx interface{})
 	Commit(tx interface{}) error
+	Exec(tx interface{}, query string, args ...interface{}) error
 }
 
 // SetupDriver is for setting up driver manually
