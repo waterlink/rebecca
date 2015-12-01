@@ -115,3 +115,10 @@ func ExampleWhere() {
 	// At this point teenagers contains all Person records with age < 21.
 	fmt.Print(teenagers)
 }
+
+func ExampleExec() {
+	ID := 25
+	if err := rebecca.Exec("UPDATE counters SET value = value + 1 WHERE id = $1", ID); err != nil {
+		panic(err)
+	}
+}

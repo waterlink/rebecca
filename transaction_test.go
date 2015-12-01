@@ -78,6 +78,7 @@ func ExampleBegin() {
 	// - tx.Remove(record)
 	// - tx.Save(record)
 	// - tx.Where(records, where, args...)
+	// - tx.Exec(query, args...)
 }
 
 func ExampleTransaction_Commit() {
