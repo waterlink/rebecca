@@ -12,7 +12,7 @@ func TestExec(t *testing.T) {
 	SetupDriver(d)
 
 	if err := Exec("SOME QUERY $1, $2", 42, "hello"); err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	actual := d.ReceivedExec()
@@ -37,7 +37,7 @@ func TestTransactionExec(t *testing.T) {
 	defer tx.Rollback()
 
 	if err := tx.Exec("SOME QUERY $1, $2", 42, "hello"); err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	actual := d.ReceivedExec()
