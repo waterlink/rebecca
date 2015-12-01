@@ -493,17 +493,17 @@ func TestTransactions(t *testing.T) {
 	}
 }
 
-func (d *Driver) exec(t *testing.T, query string) {
-	if _, err := d.db.Exec(query); err != nil {
+func execQuery(t *testing.T, query string) {
+	if err := rebecca.Exec(query); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func setup(t *testing.T) {
 	d := NewDriver(pgURL)
-	d.exec(t, "DELETE FROM people")
-	d.exec(t, "DELETE FROM posts")
 	driver.SetupDriver(d)
+	execQuery(t, "DELETE FROM people")
+	execQuery(t, "DELETE FROM posts")
 }
 
 func equalPosts(l, r []Post) bool {

@@ -161,6 +161,11 @@ func (d *Driver) Commit(itx interface{}) error {
 	return tx.Commit()
 }
 
+// Exec is for executing query discarding its result
+func (d *Driver) Exec(tx interface{}, query string, args ...interface{}) error {
+	return d.execQuery(tx, query, args...)
+}
+
 func (d *Driver) queryRow(tx interface{}, query string, args ...interface{}) *sql.Row {
 	if tx == nil {
 		return d.db.QueryRow(query, args...)

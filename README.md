@@ -131,6 +131,14 @@ if err := rebecca.Remove(p); err != nil {
 }
 ```
 
+### Executing query and discarding its result
+
+```go
+if err := rebecca.Exec("UPDATE counters SET value = value + 1 WHERE id = $1", ID); err != nil {
+        // handle error here
+}
+```
+
 ### Fetching count for something
 
 First lets define the view for this purpose:
@@ -254,8 +262,8 @@ if err := tx.Save(p); err != nil {
         // handle error here
 }
 
-// use tx.Save, tx.Get, tx.Where, tx.All, tx.First as you would normally do
-// with `rebecca`
+// use tx.Save, tx.Get, tx.Where, tx.All, tx.First, tx.Exec as you would
+// normally do with `rebecca`
 ```
 
 And finally, commit the transaction:
