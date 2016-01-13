@@ -30,11 +30,10 @@ func Transact(fn func(tx *Transaction) error) (err error) {
 
 	defer func() {
 		if p := recover(); p != nil {
-			switch p := p.(type) {
-			case error:
-				err = p
-			default:
-				err = fmt.Errorf("%s (recovered)", p)
+			if e, ok := p.(error); ok {
+				err = &Recovered{e}
+			} else {
+				err = &Recovered{fmt.Errorf("%s", p)}
 			}
 		}
 		if err != nil {
